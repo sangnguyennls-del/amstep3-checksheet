@@ -137,6 +137,49 @@ function run() {
   assert.ok(!state.dirty.has(k1), "markFieldsApplied: cả 2 field applied thì ô phải hết dirty");
   assert.strictEqual(state.initial[k1].ketQua, "N", "markFieldsApplied: Actual applied lần này phải đồng bộ initial");
 
+  // --- applyBatThuong: Task 4 -- ghi thẳng vào cells VÀ initial cùng lúc
+  // (không đi qua dirty), vì RPC set_ket_qua_r_with_bat_thuong đã lưu server
+  // ngay khi gọi (không optimistic như setPlan/setAct). ---
+  state = initialGridState({});
+  state = gridReducer(state, {
+    type: "applyBatThuong",
+    congViecId: "CV1",
+    ngay: "2026-07-01",
+    thuChienId: "th-1",
+    updatedAt: "2026-07-01T08:00:00Z",
+    moTa: "Rò rỉ dầu tại khớp nối",
+  });
+  assert.strictEqual(state.cells[k1].ketQua, "R", "applyBatThuong phải đặt ketQua=R trong cells");
+  assert.strictEqual(state.cells[k1].id, "th-1", "applyBatThuong phải ghi id thuc_hien mới");
+  assert.strictEqual(
+    state.cells[k1].batThuongMoTa,
+    "Rò rỉ dầu tại khớp nối",
+    "applyBatThuong phải ghi mô tả bất thường vào cells để Cell.tsx hiện tooltip",
+  );
+  assert.ok(
+    !state.dirty.has(k1),
+    "applyBatThuong KHÔNG được đánh dấu dirty -- RPC đã lưu server-side ngay lập tức",
+  );
+  assert.deepStrictEqual(
+    state.initial[k1],
+    state.cells[k1],
+    "applyBatThuong phải đồng bộ initial = cells ngay (khác setAct optimistic vốn chỉ ghi cells)",
+  );
+
+  // Nếu ô đã có keHoach=true từ trước, applyBatThuong không được đụng vào Plan.
+  state = initialGridState({
+    [k1]: { id: "id-1", keHoach: true, ketQua: "N", updatedAt: "2026-06-01T00:00:00Z" },
+  });
+  state = gridReducer(state, {
+    type: "applyBatThuong",
+    congViecId: "CV1",
+    ngay: "2026-07-01",
+    thuChienId: "th-2",
+    updatedAt: "2026-07-01T08:00:00Z",
+    moTa: "Kẹt van",
+  });
+  assert.strictEqual(state.cells[k1].keHoach, true, "applyBatThuong không được ghi đè Plan đã có");
+
   // --- Đảm bảo hàm là THUẦN: không mutate state đầu vào ---
   const before = initialGridState({});
   const beforeSnapshot = JSON.parse(JSON.stringify({ cells: before.cells, dirty: [...before.dirty] }));

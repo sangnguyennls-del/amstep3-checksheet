@@ -58,6 +58,7 @@ export function ChecksheetTable({
   todayIso,
   onSetPlan,
   onSetAct,
+  onRequestBatThuong,
   selectedDay,
   onSelectDay,
   onAutoFillPlan,
@@ -74,6 +75,8 @@ export function ChecksheetTable({
   todayIso: string;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
+  /** Task 4: mở modal ghi nhận bất thường (xem Cell.tsx). */
+  onRequestBatThuong: (congViecId: string, ngay: string) => void;
   /** "Ngày vừa bấm" (mốc bắt đầu cho P4/P8) -- null nếu chưa bấm ô nào. */
   selectedDay: { congViecId: string; ngay: string } | null;
   onSelectDay: (congViecId: string, ngay: string) => void;
@@ -214,6 +217,7 @@ export function ChecksheetTable({
                         todayIso={todayIso}
                         onSetPlan={onSetPlan}
                         onSetAct={onSetAct}
+                        onRequestBatThuong={onRequestBatThuong}
                         onPaintStart={handlePaintStart}
                         onPaintEnter={() => handlePaintEnter(row.congViecId, d)}
                         onSelectDay={onSelectDay}

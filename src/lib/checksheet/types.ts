@@ -19,6 +19,11 @@ export type ThucHienCell = {
   keHoach: boolean;
   ketQua: KetQua;
   updatedAt: string | null; // ISO timestamp, dùng cho optimistic concurrency
+  // Task 4: mô tả bất thường (bat_thuong.mo_ta) khi ketQua="R" -- join từ
+  // getThucHien() (queries.ts) để Cell.tsx hiện tooltip hover mà không cần gọi
+  // riêng 1 API cho từng ô. undefined/null nếu ô không phải "R" hoặc chưa tải
+  // join (vd vừa applyBatThuong ở gridReducer, xem BatThuongModal.tsx).
+  batThuongMoTa?: string | null;
 };
 
 // Map "CV00001_2026-07-15" -> ThucHienCell

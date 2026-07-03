@@ -6,7 +6,11 @@ import { getCongViecRows, getThucHien, parseNhanVienMsnv } from "@/lib/checkshee
 import { getEditability, type EditabilityMap } from "@/lib/checksheet/editability";
 import { gridReducer, initialGridState } from "@/lib/checksheet/gridReducer";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
+import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
+import { BatThuongModal } from "./BatThuongModal";
+import { EquipmentImageModal } from "./EquipmentImageModal";
+import "./print.css";
 
 type ThietBiOption = FilterOptions["thietBi"][number];
 
@@ -54,25 +58,6 @@ function defaultMonthValue(): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
 }
 
-/**
- * Ngày hiện tại theo giờ Việt Nam (Asia/Ho_Chi_Minh), dạng "YYYY-MM-DD" --
- * dùng làm gợi ý UI cho cửa sổ +-4 ngày (actWindow.ts). Trước đây dùng
- * `new Date().toISOString().slice(0, 10)` -- đây là ngày lịch UTC, có thể lệch
- * 1 ngày so với "hôm nay" thật ở VN (UTC+7) vào khoảng 17:00-24:00 giờ VN, làm
- * gợi ý cửa sổ +-4 ngày sai 1 ngày dù không ảnh hưởng quyền lưu thật (server
- * mới là nơi quyết định, dùng `today_vn()` trong 0002_functions_triggers.sql).
- */
-function vnTodayIso(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
 /** "YYYY-MM" -> { thangDau: "YYYY-MM-01", thangCuoi: "YYYY-MM-<số ngày cuối tháng>" }. */
 export function monthRange(monthValue: string): { thangDau: string; thangCuoi: string } {
   const [yStr, mStr] = monthValue.split("-");
@@ -115,6 +100,12 @@ export function ChecksheetApp({
   const [selectedDay, setSelectedDay] = useState<{ congViecId: string; ngay: string } | null>(
     null,
   );
+  // Task 4: ô đang chờ nhập mô tả bất thường (mở BatThuongModal) -- null nếu
+  // không có modal nào đang mở. Xem Cell.tsx: onRequestBatThuong.
+  const [batThuongTarget, setBatThuongTarget] = useState<{ congViecId: string; ngay: string } | null>(
+    null,
+  );
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn, thu hẹp
   // kip/nhanVien theo xuong đã chọn -- đúng thuật toán hệ cũ (App.applyFilters
@@ -209,6 +200,36 @@ export function ChecksheetApp({
 
   function handleSelectDay(congViecId: string, ngay: string) {
     setSelectedDay({ congViecId, ngay });
+  }
+
+  // Task 4: mở BatThuongModal cho đúng ô vừa click (Cell.applyZone chỉ gọi
+  // hàm này khi chu trình Actual SẮP đổi thành "R" -- không dispatch state gì
+  // ở đây, chỉ mở modal chờ người dùng nhập mô tả).
+  function handleRequestBatThuong(congViecId: string, ngay: string) {
+    setBatThuongTarget({ congViecId, ngay });
+  }
+
+  // Modal đã gọi RPC `set_ket_qua_r_with_bat_thuong` THÀNH CÔNG (lưu server
+  // xong) -- CHỈ bây giờ mới dispatch `applyBatThuong` để tô đỏ ô trên UI,
+  // đúng nguyên tắc "không optimistic" của luồng R (khác Plan/Actual G/N vốn
+  // tô trước, lưu sau qua nút Lưu thường -- xem docstring action
+  // `applyBatThuong` ở gridReducer.ts).
+  function handleBatThuongSuccess(result: {
+    congViecId: string;
+    ngay: string;
+    thuChienId: string;
+    updatedAt: string;
+    moTa: string;
+  }) {
+    dispatch({
+      type: "applyBatThuong",
+      congViecId: result.congViecId,
+      ngay: result.ngay,
+      thuChienId: result.thuChienId,
+      updatedAt: result.updatedAt,
+      moTa: result.moTa,
+    });
+    setBatThuongTarget(null);
   }
 
   /**
@@ -432,12 +453,14 @@ export function ChecksheetApp({
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
+      {/* .no-print (print.css): ẩn toàn bộ phần điều khiển khi in, chỉ hiện
+          bảng checksheet (.print-area bên dưới) -- xem nút "In". */}
+      <p className="no-print mb-4 text-sm text-gray-500">
         Đăng nhập: {currentUser.hoTen}
         {currentUser.msnv ? ` (${currentUser.msnv})` : ""}
       </p>
 
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-white p-4">
+      <div className="no-print mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-white p-4">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700">Xưởng</label>
           <select
@@ -526,17 +549,26 @@ export function ChecksheetApp({
       </div>
 
       {selectedThietBi ? (
-        <p className="mb-3 text-sm text-gray-500">
-          Thiết bị: <span className="font-medium">{selectedThietBi.tenThietBi}</span> — Xưởng{" "}
-          {selectedThietBi.xuong || "-"} / Kíp {selectedThietBi.kip || "-"}
+        <p className="no-print mb-3 flex items-center gap-3 text-sm text-gray-500">
+          <span>
+            Thiết bị: <span className="font-medium">{selectedThietBi.tenThietBi}</span> — Xưởng{" "}
+            {selectedThietBi.xuong || "-"} / Kíp {selectedThietBi.kip || "-"}
+          </span>
+          <button
+            type="button"
+            className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+            onClick={() => setImageModalOpen(true)}
+          >
+            Xem ảnh thiết bị
+          </button>
         </p>
       ) : null}
 
-      {loadError ? <p className="mb-3 text-sm text-red-600">{loadError}</p> : null}
-      {saveError ? <p className="mb-3 text-sm text-red-600">{saveError}</p> : null}
+      {loadError ? <p className="no-print mb-3 text-sm text-red-600">{loadError}</p> : null}
+      {saveError ? <p className="no-print mb-3 text-sm text-red-600">{saveError}</p> : null}
 
       {rejectedCells.length > 0 ? (
-        <div className="mb-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="no-print mb-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
           <p className="mb-1 font-medium">
             {rejectedCells.length} ô không được lưu (server từ chối hoặc cần xử lý riêng):
           </p>
@@ -558,40 +590,71 @@ export function ChecksheetApp({
 
       {showTable ? (
         <>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="no-print mb-3 flex items-center justify-between">
             <p className="text-sm text-gray-500">
               {hasDirty
                 ? `${gridState.dirty.size} ô đã đổi, chưa lưu.`
                 : "Không có thay đổi nào chưa lưu."}
             </p>
-            <button
-              type="button"
-              disabled={!hasDirty || saving}
-              onClick={handleSave}
-              className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
-            >
-              {saving ? "Đang lưu..." : "Lưu"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+              >
+                In
+              </button>
+              <button
+                type="button"
+                disabled={!hasDirty || saving}
+                onClick={handleSave}
+                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
+              >
+                {saving ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
           </div>
-          <ChecksheetTable
-            rows={rows}
-            thucHien={gridState.cells}
-            thangDau={thangDau}
-            thangCuoi={thangCuoi}
-            editability={editability}
-            todayIso={todayIso}
-            onSetPlan={handleSetPlan}
-            onSetAct={handleSetAct}
-            selectedDay={selectedDay}
-            onSelectDay={handleSelectDay}
-            onAutoFillPlan={autoFillPlan}
-          />
+          {/* .print-area (print.css): PHẦN DUY NHẤT còn hiển thị khi in --
+              bảng chấm công A3 ngang, không kèm nút bấm/thông báo. */}
+          <div className="print-area">
+            <ChecksheetTable
+              rows={rows}
+              thucHien={gridState.cells}
+              thangDau={thangDau}
+              thangCuoi={thangCuoi}
+              editability={editability}
+              todayIso={todayIso}
+              onSetPlan={handleSetPlan}
+              onSetAct={handleSetAct}
+              onRequestBatThuong={handleRequestBatThuong}
+              selectedDay={selectedDay}
+              onSelectDay={handleSelectDay}
+              onAutoFillPlan={autoFillPlan}
+            />
+          </div>
         </>
       ) : (
-        <p className="rounded-md border bg-white p-4 text-center text-sm text-gray-400">
+        <p className="no-print rounded-md border bg-white p-4 text-center text-sm text-gray-400">
           Chọn Thiết bị và Tháng rồi bấm &quot;Xem checksheet&quot; để tải dữ liệu.
         </p>
       )}
+
+      {batThuongTarget ? (
+        <BatThuongModal
+          open={!!batThuongTarget}
+          congViecId={batThuongTarget.congViecId}
+          ngay={batThuongTarget.ngay}
+          onClose={() => setBatThuongTarget(null)}
+          onSuccess={handleBatThuongSuccess}
+        />
+      ) : null}
+
+      <EquipmentImageModal
+        open={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+        anhUrl={selectedThietBi?.anhUrl ?? null}
+        tenThietBi={selectedThietBi?.tenThietBi ?? ""}
+      />
     </div>
   );
 }

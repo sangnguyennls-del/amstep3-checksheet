@@ -144,11 +144,18 @@ type ThucHienJoinRow = {
   ke_hoach: boolean;
   ket_qua: "G" | "R" | "N";
   updated_at: string;
+  // Embed ngược từ `thuc_hien` sang `bat_thuong` (FK nằm ở bat_thuong.thuchien_id,
+  // unique -- xem 0001_schema.sql) -- Task 4: chỉ có giá trị (0 hoặc 1 phần tử)
+  // khi ket_qua='R' và đã có bản ghi bat_thuong tương ứng. PostgREST trả embed
+  // 1-1 dạng object hoặc mảng 1 phần tử tuỳ version, chuẩn hoá bằng firstOrNull().
+  bat_thuong: { mo_ta: string; trang_thai: string } | { mo_ta: string; trang_thai: string }[] | null;
 };
 
 /**
  * SELECT `thuc_hien` where `congviec_id = any(congViecIds) and ngay between
- * thangDau and thangCuoi`, build map bằng `cellKey()`.
+ * thangDau and thangCuoi`, build map bằng `cellKey()`. Task 4: join thêm
+ * `bat_thuong.mo_ta`/`trang_thai` để Cell.tsx hiện tooltip hover cho các ô
+ * ket_qua='R' mà không cần gọi API riêng cho từng ô.
  */
 export async function getThucHien(
   supabase: SupabaseClient,
@@ -160,7 +167,7 @@ export async function getThucHien(
 
   const { data, error } = await supabase
     .from("thuc_hien")
-    .select("id, congviec_id, ngay, ke_hoach, ket_qua, updated_at")
+    .select("id, congviec_id, ngay, ke_hoach, ket_qua, updated_at, bat_thuong(mo_ta, trang_thai)")
     .in("congviec_id", congViecIds)
     .gte("ngay", thangDau)
     .lte("ngay", thangCuoi);
@@ -171,11 +178,13 @@ export async function getThucHien(
 
   const map: ThucHienMap = {};
   for (const r of rows) {
+    const batThuong = firstOrNull(r.bat_thuong);
     map[cellKey(r.congviec_id, r.ngay)] = {
       id: r.id,
       keHoach: r.ke_hoach,
       ketQua: r.ket_qua,
       updatedAt: r.updated_at,
+      batThuongMoTa: batThuong?.mo_ta ?? null,
     };
   }
   return map;

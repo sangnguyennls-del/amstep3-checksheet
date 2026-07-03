@@ -25,6 +25,30 @@ export type GridAction =
       type: "markFieldsApplied";
       entries: { congViecId: string; ngay: string; planApplied: boolean; actApplied: boolean }[];
       savedAt: string;
+    }
+  // applyBatThuong: Task 4 -- luồng bất thường (Actual="R") KHÔNG đi qua
+  // hàng đợi dirty/nút Lưu như Plan/Actual thường (setPlan/setAct đều
+  // OPTIMISTIC: đổi state trước, lưu server sau). RPC
+  // `set_ket_qua_r_with_bat_thuong` tự lưu thẳng xuống DB ngay khi gọi, nên
+  // đây là action riêng, chỉ dispatch SAU KHI RPC đã thành công (xem
+  // BatThuongModal.tsx/ChecksheetApp.handleBatThuongApplied) -- ghi thẳng vào
+  // CẢ `cells` LẪN `initial` cùng lúc (khác setAct chỉ ghi `cells` rồi tính
+  // lại dirty) để ô không bao giờ bị coi là "dirty" (đã lưu xong, không có gì
+  // để Lưu lại qua nút Lưu thường -- nút Lưu thường còn CHẶN gửi ket_qua="R"
+  // tường minh, xem ChecksheetApp.handleSave). Không tái dùng `markFieldsApplied`
+  // vì action đó giả định giá trị current đã tồn tại trong `cells` từ TRƯỚC
+  // (do người dùng gõ optimistic) và chỉ đồng bộ `initial` theo field applied
+  // -- ở đây giá trị R chưa hề có trong `cells` (bị chặn không dispatch cho
+  // tới khi RPC xong), nên cần 1 action ghi cả 2 nơi cùng lúc với đầy đủ
+  // metadata mới (id, updatedAt, batThuongMoTa) mà `markFieldsApplied` không
+  // nhận tham số nào cho.
+  | {
+      type: "applyBatThuong";
+      congViecId: string;
+      ngay: string;
+      thuChienId: string;
+      updatedAt: string;
+      moTa: string;
     };
 
 const EMPTY_CELL: ThucHienCell = { id: null, keHoach: false, ketQua: "N", updatedAt: null };
@@ -125,6 +149,24 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
           dirty.add(key);
         }
       }
+      return { cells, dirty, initial };
+    }
+
+    case "applyBatThuong": {
+      const key = cellKey(action.congViecId, action.ngay);
+      const newCell: ThucHienCell = {
+        id: action.thuChienId,
+        keHoach: state.cells[key]?.keHoach ?? EMPTY_CELL.keHoach,
+        ketQua: "R",
+        updatedAt: action.updatedAt,
+        batThuongMoTa: action.moTa,
+      };
+      const cells: ThucHienMap = { ...state.cells, [key]: newCell };
+      // Ghi thẳng vào `initial` luôn -- RPC đã lưu server-side ngay khi gọi,
+      // nên ô này KHÔNG dirty (không có gì chờ nút Lưu thường xử lý nữa).
+      const initial: ThucHienMap = { ...state.initial, [key]: newCell };
+      const dirty = new Set(state.dirty);
+      dirty.delete(key);
       return { cells, dirty, initial };
     }
 

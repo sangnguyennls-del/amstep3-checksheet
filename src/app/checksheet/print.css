@@ -1,0 +1,41 @@
+/*
+ * Print/PDF cho trang /checksheet (Task 4) -- port tinh thần hệ GAS cũ
+ * (CLAUDE.md "Client-side structure": window.print() + @media print riêng
+ * cho A3 ngang, ẩn phần điều khiển/nút bấm khi in, chỉ hiện bảng). CHỈ áp
+ * dụng trong @media print -- không ảnh hưởng gì tới hiển thị màn hình
+ * thường (không có selector nào ở ngoài @media print trong file này).
+ *
+ * File này là CSS GLOBAL (không phải *.module.css) vì các class .no-print/
+ * .print-area cần gắn trực tiếp lên nhiều phần tử JSX khác nhau trong
+ * ChecksheetApp.tsx bằng className thuần, không qua CSS Modules scoping.
+ * Next.js App Router cho phép import CSS global từ bất kỳ component nào
+ * trong thư mục app/ (xem node_modules/next/dist/docs/01-app/01-getting-
+ * started/11-css.md, mục "Global CSS").
+ */
+
+@media print {
+  @page {
+    size: A3 landscape;
+    margin: 10mm;
+  }
+
+  /* Ẩn mọi phần điều khiển (bộ lọc, nút Lưu/In, thông báo lỗi/cảnh báo) khi
+     in -- chỉ giữ lại bảng checksheet. */
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .print-area {
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .print-area table {
+    width: 100%;
+    font-size: 9px;
+  }
+}

@@ -30,10 +30,19 @@ function actClass(ketQua: KetQua): string {
  * trên-trái, `isPlanZone = x*h > y*w` (w,h = width/height của ô).
  *
  * Click vào vùng Plan: toggle Y/N (click 1 cái = Y, click lại = N).
- * Click vào vùng Actual: cycle N -> G -> N bằng click thường -- Task 2 KHÔNG
- * có UI nào tạo ra ketQua="R" (R chỉ set qua modal bất thường ở Task 4), dù
- * `onSetAct` bên dưới vẫn nhận được ketQua="R" về mặt kỹ thuật vì Task 4 sẽ
- * tái dùng đúng action `setAct` này.
+ * Click vào vùng Actual: Task 4 mở rộng chu trình click thường thành
+ * N -> G -> R -> N (Task 2 trước đó chỉ có N <-> G). Khi kết quả SẮP đổi
+ * thành "R", KHÔNG dispatch `onSetAct` trực tiếp (khác Plan/Actual G/N vốn
+ * OPTIMISTIC: tô ngay rồi Lưu sau) -- thay vào đó gọi `onRequestBatThuong` để
+ * `ChecksheetApp` mở modal nhập mô tả bất thường; ô CHỈ thực sự chuyển sang
+ * "R" sau khi modal gọi RPC `set_ket_qua_r_with_bat_thuong` thành công (xem
+ * ChecksheetApp.tsx, action `applyBatThuong` ở gridReducer.ts). Vì vậy khi
+ * next="R", `applyZone` trả về `null` (không có PaintOp) -- không bắt đầu
+ * kéo-tô hàng loạt "R" qua nhiều ô (mỗi ô R cần 1 mô tả riêng, không thể áp
+ * lại y hệt 1 giá trị cho nhiều ô như kéo-tô Plan/G/N).
+ * Đổi NGƯỢC LẠI từ "R" về "N" (click tiếp trên 1 ô đang đỏ) vẫn đi qua
+ * `onSetAct` bình thường -- đây là đổi khỏi "R", không phải đặt "R" mới, nên
+ * không bị RPC `upsert_thuc_hien` chặn (chỉ chặn gửi ket_qua="R").
  */
 export function Cell({
   congViecId,
@@ -43,6 +52,7 @@ export function Cell({
   todayIso,
   onSetPlan,
   onSetAct,
+  onRequestBatThuong,
   onPaintStart,
   onPaintEnter,
   onSelectDay,
@@ -57,6 +67,9 @@ export function Cell({
   todayIso: string;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
+  /** Task 4: yêu cầu mở modal ghi nhận bất thường cho đúng ô này -- gọi khi
+   * chu trình Actual sắp đổi thành "R" (xem docstring hàm Cell ở trên). */
+  onRequestBatThuong: (congViecId: string, ngay: string) => void;
   onPaintStart: (op: PaintOp) => void;
   onPaintEnter: () => void;
   /** Ghi nhận "ngày vừa bấm trong hàng này" -- dùng làm mốc bắt đầu cho nút
@@ -83,7 +96,14 @@ export function Cell({
       return { kind: "plan", keHoach: nextKeHoach };
     } else {
       if (!editable.act) return null;
-      const nextKetQua: KetQua = value.ketQua === "G" ? "N" : "G";
+      // Chu trình N -> G -> R -> N.
+      const nextKetQua: KetQua = value.ketQua === "N" ? "G" : value.ketQua === "G" ? "R" : "N";
+      if (nextKetQua === "R") {
+        // KHÔNG optimistic: chờ modal bất thường xác nhận RPC thành công rồi
+        // mới đổi state (xem docstring hàm Cell).
+        onRequestBatThuong(congViecId, ngay);
+        return null;
+      }
       onSetAct(congViecId, ngay, nextKetQua);
       return { kind: "act", ketQua: nextKetQua };
     }
@@ -110,16 +130,20 @@ export function Cell({
     outOfActWindow ? ` ${styles.actDimmed}` : ""
   }`;
 
+  // Tooltip vùng Actual: CHỈ đọc mô tả bất thường khi ô THẬT SỰ đang ở
+  // ketQua="R" (Task 4) -- các trạng thái khác giữ gợi ý cửa sổ +-4 ngày cũ
+  // (Task 3), không được lẫn 2 loại tooltip này với nhau.
+  const actTitle =
+    value.ketQua === "R"
+      ? (value.batThuongMoTa ?? "Bất thường (chưa có mô tả)")
+      : outOfActWindow
+        ? "Ngoài cửa sổ +-4 ngày cho Actual -- có thể bị server từ chối"
+        : undefined;
+
   return (
-    <div
-      ref={ref}
-      className={styles.dayCell}
-      onPointerDown={handlePointerDown}
-      onPointerEnter={handlePointerEnter}
-      title={outOfActWindow ? "Ngoài cửa sổ +-4 ngày cho Actual -- có thể bị server từ chối" : undefined}
-    >
+    <div ref={ref} className={styles.dayCell} onPointerDown={handlePointerDown} onPointerEnter={handlePointerEnter}>
       <div className={`${styles.triPlan} ${planClass(value.keHoach)}`} />
-      <div className={actClassName} />
+      <div className={actClassName} title={actTitle} />
     </div>
   );
 }
