@@ -3,10 +3,14 @@
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BatThuongListItem } from "@/lib/checksheet/batThuongList";
-import {
-  updateBatThuongStatus,
-  updateBatThuongInitialState,
-} from "@/app/actions/batThuong";
+import { updateBatThuongStatus, type UpdateBatThuongState } from "@/app/actions/batThuong";
+
+// Định nghĩa state ban đầu Ở ĐÂY (client), KHÔNG import từ file "use server"
+// -- Next.js 16 chỉ cho phép 1 file "use server" export các hàm async,
+// export thêm 1 hằng số (object) từ file đó làm crash toàn trang lúc runtime
+// ("A 'use server' file can only export async functions, found object.").
+// Cùng pattern đã dùng ở SettingsForm.tsx (không import settingsInitialState).
+const initialActionState: UpdateBatThuongState = { error: null };
 
 const TRANG_THAI_LIST = ["Mở", "Đang xử lý", "Đã đóng"] as const;
 
@@ -31,10 +35,7 @@ const DEFAULT_SELECTED = new Set<string>(["Mở", "Đang xử lý"]);
 // chặn submit dòng khác, đúng pattern UsersTable.tsx/EquipmentList.tsx.
 function RowStatusForm({ item }: { item: BatThuongListItem }) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(
-    updateBatThuongStatus,
-    updateBatThuongInitialState,
-  );
+  const [state, formAction, isPending] = useActionState(updateBatThuongStatus, initialActionState);
   const [trangThai, setTrangThai] = useState<(typeof TRANG_THAI_LIST)[number]>(item.trangThai);
   const [ngayKhacPhuc, setNgayKhacPhuc] = useState(item.ngayKhacPhuc ?? "");
 

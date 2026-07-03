@@ -6,8 +6,6 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 
 export type UpdateBatThuongState = { error: string | null; success?: boolean };
 
-const initialOk: UpdateBatThuongState = { error: null };
-
 const VALID_TRANG_THAI = ["Mở", "Đang xử lý", "Đã đóng"] as const;
 type TrangThai = (typeof VALID_TRANG_THAI)[number];
 
@@ -61,5 +59,3 @@ export async function updateBatThuongStatus(
   revalidatePath("/admin/bat-thuong");
   return { error: null, success: true };
 }
-
-export const updateBatThuongInitialState = initialOk;
