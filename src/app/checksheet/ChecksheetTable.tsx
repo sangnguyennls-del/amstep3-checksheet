@@ -1,9 +1,8 @@
 "use client";
 
-import { cellKey, type CongViecRow, type ThucHienMap } from "@/lib/checksheet/types";
-import styles from "./checksheet.module.css";
-
-const EMPTY_CELL = { keHoach: false, ketQua: "N" as const };
+import { useEffect, useRef } from "react";
+import { cellKey, type CongViecRow, type KetQua, type ThucHienMap } from "@/lib/checksheet/types";
+import { Cell, type PaintOp } from "./Cell";
 
 /**
  * Rowspan merge: y hệt thuật toán `calcColSpan`/`renderTable` của hệ cũ
@@ -47,29 +46,73 @@ export function listDaysInRange(thangDau: string, thangCuoi: string): string[] {
   return days;
 }
 
-function planClass(keHoach: boolean): string {
-  return keHoach ? styles.bgY : styles.bgN;
-}
-
-function actClass(ketQua: "G" | "R" | "N"): string {
-  if (ketQua === "G") return styles.bgG;
-  if (ketQua === "R") return styles.bgR;
-  return styles.bgN;
-}
-
 export function ChecksheetTable({
   rows,
   thucHien,
   thangDau,
   thangCuoi,
+  editable,
+  onSetPlan,
+  onSetAct,
+  selectedDay,
+  onSelectDay,
+  onAutoFillPlan,
 }: {
   rows: CongViecRow[];
   thucHien: ThucHienMap;
   thangDau: string;
   thangCuoi: string;
+  /** Task 2: hardcode {plan:true, act:true} từ ChecksheetApp. Task 3 sẽ thay
+   * bằng giá trị thật lấy từ get_editability (per-CONGVIEC), không đổi API
+   * của Cell -- xem docs/plans/pha4-checksheet-grid.md Task 2/3. */
+  editable: { plan: boolean; act: boolean };
+  onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
+  onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
+  /** "Ngày vừa bấm" (mốc bắt đầu cho P4/P8) -- null nếu chưa bấm ô nào. */
+  selectedDay: { congViecId: string; ngay: string } | null;
+  onSelectDay: (congViecId: string, ngay: string) => void;
+  onAutoFillPlan: (congViecId: string, startDay: string, interval: 4 | 8) => void;
 }) {
   const rowSpans = calcRowSpans(rows);
   const days = listDaysInRange(thangDau, thangCuoi);
+
+  // Kéo-tô: isPaintingRef bật khi pointerdown trên 1 ô, tắt khi pointerup ở
+  // bất kỳ đâu (kể cả ngoài bảng) hoặc window mất focus -- currentOpRef lưu
+  // ĐÚNG thao tác vừa dùng ở ô đầu tiên (Plan=Y/N cụ thể, hay 1 giá trị
+  // Actual cụ thể) để áp LẠI Y HỆT giá trị đó cho các ô con trỏ đi qua tiếp
+  // theo (không re-toggle theo giá trị hiện tại của từng ô).
+  const isPaintingRef = useRef(false);
+  const currentOpRef = useRef<PaintOp | null>(null);
+
+  useEffect(() => {
+    function stopPainting() {
+      isPaintingRef.current = false;
+      currentOpRef.current = null;
+    }
+    window.addEventListener("pointerup", stopPainting);
+    window.addEventListener("blur", stopPainting);
+    return () => {
+      window.removeEventListener("pointerup", stopPainting);
+      window.removeEventListener("blur", stopPainting);
+    };
+  }, []);
+
+  function handlePaintStart(op: PaintOp) {
+    isPaintingRef.current = true;
+    currentOpRef.current = op;
+  }
+
+  function handlePaintEnter(congViecId: string, ngay: string) {
+    if (!isPaintingRef.current || !currentOpRef.current) return;
+    const op = currentOpRef.current;
+    if (op.kind === "plan") {
+      if (!editable.plan) return;
+      onSetPlan(congViecId, ngay, op.keHoach);
+    } else {
+      if (!editable.act) return;
+      onSetAct(congViecId, ngay, op.ketQua);
+    }
+  }
 
   if (rows.length === 0) {
     return (
@@ -89,6 +132,9 @@ export function ChecksheetTable({
             <th className="border px-2 py-1">Tiêu chuẩn</th>
             <th className="border px-2 py-1">Loại</th>
             <th className="border px-2 py-1">Thời gian</th>
+            <th className="border px-1 py-1 text-center" title="Tự động tô Plan mỗi 4/8 ngày">
+              Auto
+            </th>
             {days.map((d) => (
               <th key={d} className="border px-1 py-1 text-center">
                 {Number(d.slice(8, 10))}
@@ -117,14 +163,52 @@ export function ChecksheetTable({
                 ) : null}
                 <td className="border px-2 py-1">{row.loaiHoatDong}</td>
                 <td className="border px-2 py-1 text-center">{row.thoiGian ?? ""}</td>
+                <td className="border px-1 py-1 text-center">
+                  {/* P4/P8: tô Plan mỗi 4/8 ngày bắt đầu từ "ngày vừa bấm" trong
+                      chính hàng này (selectedDay) -- bấm 1 ô ngày trước, rồi bấm
+                      P4/P8. Disable nếu chưa chọn ngày nào trong hàng. */}
+                  <div className="flex justify-center gap-1">
+                    <button
+                      type="button"
+                      className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                      disabled={selectedDay?.congViecId !== row.congViecId}
+                      title="Tô Plan mỗi 4 ngày từ ngày đã chọn"
+                      onClick={() =>
+                        selectedDay?.congViecId === row.congViecId &&
+                        onAutoFillPlan(row.congViecId, selectedDay.ngay, 4)
+                      }
+                    >
+                      P4
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                      disabled={selectedDay?.congViecId !== row.congViecId}
+                      title="Tô Plan mỗi 8 ngày từ ngày đã chọn"
+                      onClick={() =>
+                        selectedDay?.congViecId === row.congViecId &&
+                        onAutoFillPlan(row.congViecId, selectedDay.ngay, 8)
+                      }
+                    >
+                      P8
+                    </button>
+                  </div>
+                </td>
                 {days.map((d) => {
-                  const cell = thucHien[cellKey(row.congViecId, d)] ?? EMPTY_CELL;
+                  const cell = thucHien[cellKey(row.congViecId, d)];
                   return (
                     <td key={d} className="border p-0">
-                      <div className={styles.dayCell}>
-                        <div className={`${styles.triPlan} ${planClass(cell.keHoach)}`} />
-                        <div className={`${styles.triAct} ${actClass(cell.ketQua)}`} />
-                      </div>
+                      <Cell
+                        congViecId={row.congViecId}
+                        ngay={d}
+                        cell={cell}
+                        editable={editable}
+                        onSetPlan={onSetPlan}
+                        onSetAct={onSetAct}
+                        onPaintStart={handlePaintStart}
+                        onPaintEnter={() => handlePaintEnter(row.congViecId, d)}
+                        onSelectDay={onSelectDay}
+                      />
                     </td>
                   );
                 })}
