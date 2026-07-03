@@ -46,6 +46,15 @@ export async function createUser(
     return { error: "Vai trò không hợp lệ" };
   }
 
+  // Check app-level này là lớp phòng thủ đầu tiên cho đường INSERT: insert
+  // bên dưới dùng service-role client (bypass RLS hoàn toàn), và service-role
+  // không có auth.uid()/JWT context nên fn_guard_vai_tro_change (0002/0005)
+  // không thể tự chặn "not admin" cho chính request này -- nó chỉ còn backstop
+  // riêng cho nhánh adminm-escalation khi INSERT đến từ một kết nối
+  // authenticated/anon khác (không phải service_role), xem 0005 để biết chi
+  // tiết. Nói cách khác: đừng xoá check này với giả định "trigger đã lo" --
+  // với chính luồng createUser này, trigger cố tình bỏ qua guard adminm khi
+  // current_user = 'service_role' để không chặn oan các lần tạo user hợp lệ.
   if (vaiTro === "adminm" && admin.vaiTro !== "adminm") {
     return { error: "Chỉ AdminM mới được cấp quyền AdminM cho người khác." };
   }
