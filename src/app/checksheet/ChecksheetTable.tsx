@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { cellKey, type CongViecRow, type KetQua, type ThucHienMap } from "@/lib/checksheet/types";
+import type { EditabilityMap } from "@/lib/checksheet/editability";
 import { Cell, type PaintOp } from "./Cell";
+
+const DENY_EDITABLE = { plan: false, act: false };
 
 /**
  * Rowspan merge: y hệt thuật toán `calcColSpan`/`renderTable` của hệ cũ
@@ -51,7 +54,8 @@ export function ChecksheetTable({
   thucHien,
   thangDau,
   thangCuoi,
-  editable,
+  editability,
+  todayIso,
   onSetPlan,
   onSetAct,
   selectedDay,
@@ -62,10 +66,12 @@ export function ChecksheetTable({
   thucHien: ThucHienMap;
   thangDau: string;
   thangCuoi: string;
-  /** Task 2: hardcode {plan:true, act:true} từ ChecksheetApp. Task 3 sẽ thay
-   * bằng giá trị thật lấy từ get_editability (per-CONGVIEC), không đổi API
-   * của Cell -- xem docs/plans/pha4-checksheet-grid.md Task 2/3. */
-  editable: { plan: boolean; act: boolean };
+  /** Giá trị THẬT lấy từ get_editability (per-CONGVIEC), theo `congViecId`.
+   * Nguồn chân lý duy nhất -- không tự suy luận lại ở client. Thiếu key
+   * (chưa tải xong, hoặc lỗi) mặc định KHÔNG cho sửa (an toàn hơn). */
+  editability: EditabilityMap;
+  /** Hôm nay (ISO) -- truyền xuống Cell chỉ để tô gợi ý cửa sổ +-4 ngày. */
+  todayIso: string;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
   /** "Ngày vừa bấm" (mốc bắt đầu cho P4/P8) -- null nếu chưa bấm ô nào. */
@@ -104,12 +110,13 @@ export function ChecksheetTable({
 
   function handlePaintEnter(congViecId: string, ngay: string) {
     if (!isPaintingRef.current || !currentOpRef.current) return;
+    const rowEditable = editability[congViecId] ?? DENY_EDITABLE;
     const op = currentOpRef.current;
     if (op.kind === "plan") {
-      if (!editable.plan) return;
+      if (!rowEditable.plan) return;
       onSetPlan(congViecId, ngay, op.keHoach);
     } else {
-      if (!editable.act) return;
+      if (!rowEditable.act) return;
       onSetAct(congViecId, ngay, op.ketQua);
     }
   }
@@ -196,13 +203,15 @@ export function ChecksheetTable({
                 </td>
                 {days.map((d) => {
                   const cell = thucHien[cellKey(row.congViecId, d)];
+                  const rowEditable = editability[row.congViecId] ?? DENY_EDITABLE;
                   return (
                     <td key={d} className="border p-0">
                       <Cell
                         congViecId={row.congViecId}
                         ngay={d}
                         cell={cell}
-                        editable={editable}
+                        editable={rowEditable}
+                        todayIso={todayIso}
                         onSetPlan={onSetPlan}
                         onSetAct={onSetAct}
                         onPaintStart={handlePaintStart}

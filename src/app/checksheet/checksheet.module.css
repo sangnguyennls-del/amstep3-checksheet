@@ -44,3 +44,10 @@
 .bgN {
   background-color: #f9fafb; /* trắng/xám nhạt: chưa có dữ liệu */
 }
+
+/* Gợi ý UI: ô Actual ngoài cửa sổ +-4 ngày cho phép sửa (xem actWindow.ts).
+   CHỈ tô nhạt để gợi ý -- không chặn click, quyết định thật là status trả về
+   từ upsert_thuc_hien. */
+.actDimmed {
+  opacity: 0.45;
+}

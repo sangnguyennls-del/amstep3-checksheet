@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { KetQua, ThucHienCell } from "@/lib/checksheet/types";
+import { isWithinActWindow } from "@/lib/checksheet/actWindow";
 import styles from "./checksheet.module.css";
 
 const EMPTY_CELL: ThucHienCell = { id: null, keHoach: false, ketQua: "N", updatedAt: null };
@@ -39,6 +40,7 @@ export function Cell({
   ngay,
   cell,
   editable,
+  todayIso,
   onSetPlan,
   onSetAct,
   onPaintStart,
@@ -49,6 +51,10 @@ export function Cell({
   ngay: string;
   cell: ThucHienCell | undefined;
   editable: { plan: boolean; act: boolean };
+  /** Hôm nay (ISO, "YYYY-MM-DD") -- dùng cùng `isWithinActWindow` CHỈ để tô
+   * nhạt/gợi ý vùng Actual ngoài cửa sổ +-4 ngày, KHÔNG chặn click (quyết
+   * định thật là status trả về từ upsert_thuc_hien, xem actWindow.ts). */
+  todayIso: string;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
   onPaintStart: (op: PaintOp) => void;
@@ -97,15 +103,23 @@ export function Cell({
     onPaintEnter();
   }
 
+  // Chỉ áp dụng gợi ý "ngoài cửa sổ +-4 ngày" cho vùng Actual -- Plan không
+  // có quy tắc cửa sổ ngày này (xem actWindow.ts).
+  const outOfActWindow = !isWithinActWindow(ngay, todayIso);
+  const actClassName = `${styles.triAct} ${actClass(value.ketQua)}${
+    outOfActWindow ? ` ${styles.actDimmed}` : ""
+  }`;
+
   return (
     <div
       ref={ref}
       className={styles.dayCell}
       onPointerDown={handlePointerDown}
       onPointerEnter={handlePointerEnter}
+      title={outOfActWindow ? "Ngoài cửa sổ +-4 ngày cho Actual -- có thể bị server từ chối" : undefined}
     >
       <div className={`${styles.triPlan} ${planClass(value.keHoach)}`} />
-      <div className={`${styles.triAct} ${actClass(value.ketQua)}`} />
+      <div className={actClassName} />
     </div>
   );
 }
