@@ -137,9 +137,14 @@ function run() {
   assert.ok(!state.dirty.has(k1), "markFieldsApplied: cả 2 field applied thì ô phải hết dirty");
   assert.strictEqual(state.initial[k1].ketQua, "N", "markFieldsApplied: Actual applied lần này phải đồng bộ initial");
 
-  // --- applyBatThuong: Task 4 -- ghi thẳng vào cells VÀ initial cùng lúc
-  // (không đi qua dirty), vì RPC set_ket_qua_r_with_bat_thuong đã lưu server
-  // ngay khi gọi (không optimistic như setPlan/setAct). ---
+  // --- applyBatThuong: Task 4 -- ghi ketQua=R/updatedAt/id/batThuongMoTa
+  // thẳng vào cells VÀ initial cùng lúc (RPC set_ket_qua_r_with_bat_thuong đã
+  // lưu server ngay khi gọi, không optimistic như setPlan/setAct). Riêng
+  // keHoach thì KHÔNG được đồng bộ theo giá trị optimistic hiện tại trong
+  // `cells` -- RPC đó không hề ghi ke_hoach xuống DB (INSERT hard-code false,
+  // UPDATE giữ nguyên), nên initial.keHoach phải lấy từ initial CŨ, và dirty
+  // phải được TÍNH LẠI (không xoá cứng) để không đánh mất 1 lượt tick Plan
+  // optimistic chưa lưu (xem finding review cuối branch). ---
   state = initialGridState({});
   state = gridReducer(state, {
     type: "applyBatThuong",
@@ -179,6 +184,64 @@ function run() {
     moTa: "Kẹt van",
   });
   assert.strictEqual(state.cells[k1].keHoach, true, "applyBatThuong không được ghi đè Plan đã có");
+
+  // --- applyBatThuong: fix review finding cuối branch (Important) -- người
+  // dùng tick Plan optimistic (setPlan, CHƯA lưu, ô đang dirty) rồi mới
+  // trigger luồng R (applyBatThuong) TRƯỚC KHI lượt tick Plan đó kịp lưu qua
+  // nút Lưu thường. RPC set_ket_qua_r_with_bat_thuong không hề ghi ke_hoach
+  // xuống DB, nên sau applyBatThuong: ô vẫn phải HIỂN THỊ keHoach=true (giữ
+  // nguyên optimistic, không bị đảo ngược) NHƯNG vẫn phải CÒN dirty (vì Plan
+  // thật sự chưa được lưu) -- nếu không, reload trang sẽ mất Plan mà người
+  // dùng không hề được cảnh báo.
+  state = initialGridState({
+    [k1]: { id: "id-1", keHoach: false, ketQua: "N", updatedAt: "2026-06-01T00:00:00Z" },
+  });
+  state = gridReducer(state, { type: "setPlan", congViecId: "CV1", ngay: "2026-07-01", keHoach: true });
+  assert.ok(state.dirty.has(k1), "setPlan optimistic phải đánh dấu dirty trước khi trigger luồng R");
+
+  state = gridReducer(state, {
+    type: "applyBatThuong",
+    congViecId: "CV1",
+    ngay: "2026-07-01",
+    thuChienId: "th-3",
+    updatedAt: "2026-07-01T09:00:00Z",
+    moTa: "Rung bất thường",
+  });
+  assert.strictEqual(state.cells[k1].ketQua, "R", "applyBatThuong phải đặt ketQua=R dù có Plan chưa lưu song song");
+  assert.strictEqual(
+    state.cells[k1].updatedAt,
+    "2026-07-01T09:00:00Z",
+    "applyBatThuong phải cập nhật updatedAt mới từ RPC",
+  );
+  assert.strictEqual(
+    state.cells[k1].keHoach,
+    true,
+    "applyBatThuong KHÔNG được xoá lượt tick Plan optimistic -- vẫn phải hiện keHoach=true trên UI",
+  );
+  assert.strictEqual(
+    state.initial[k1].keHoach,
+    false,
+    "applyBatThuong: initial.keHoach phải là SERVER TRUTH (initial cũ = false, vì RPC không hề ghi ke_hoach) -- KHÔNG được lấy giá trị optimistic true",
+  );
+  assert.ok(
+    state.dirty.has(k1),
+    "applyBatThuong: ô phải VẪN CÒN dirty vì Plan optimistic chưa hề được RPC này lưu xuống DB -- đây là assertion then chốt của fix",
+  );
+
+  // Sau đó, khi Plan thật sự được lưu qua nút Lưu thường (markFieldsApplied
+  // planApplied=true), ô mới thực sự hết dirty -- chứng minh lượt tick Plan
+  // không bị mất mà được lưu đúng đường, chỉ trễ hơn 1 nhịp.
+  state = gridReducer(state, {
+    type: "markFieldsApplied",
+    entries: [{ congViecId: "CV1", ngay: "2026-07-01", planApplied: true, actApplied: false }],
+    savedAt: "2026-07-01T09:05:00Z",
+  });
+  assert.ok(
+    !state.dirty.has(k1),
+    "sau khi Plan được lưu thật qua markFieldsApplied, ô phải hết dirty -- Plan optimistic đã được persist đúng, không mất",
+  );
+  assert.strictEqual(state.initial[k1].keHoach, true, "initial.keHoach phải đồng bộ true sau khi Plan thật sự applied");
+  assert.strictEqual(state.cells[k1].ketQua, "R", "ketQua=R từ applyBatThuong trước đó không bị đụng vào khi lưu Plan");
 
   // --- Đảm bảo hàm là THUẦN: không mutate state đầu vào ---
   const before = initialGridState({});

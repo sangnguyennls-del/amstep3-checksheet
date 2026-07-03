@@ -154,19 +154,35 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
 
     case "applyBatThuong": {
       const key = cellKey(action.congViecId, action.ngay);
+      const currentCell = state.cells[key] ?? EMPTY_CELL;
       const newCell: ThucHienCell = {
         id: action.thuChienId,
-        keHoach: state.cells[key]?.keHoach ?? EMPTY_CELL.keHoach,
+        keHoach: currentCell.keHoach,
         ketQua: "R",
         updatedAt: action.updatedAt,
         batThuongMoTa: action.moTa,
       };
       const cells: ThucHienMap = { ...state.cells, [key]: newCell };
-      // Ghi thẳng vào `initial` luôn -- RPC đã lưu server-side ngay khi gọi,
-      // nên ô này KHÔNG dirty (không có gì chờ nút Lưu thường xử lý nữa).
-      const initial: ThucHienMap = { ...state.initial, [key]: newCell };
+      // RPC set_ket_qua_r_with_bat_thuong KHÔNG lưu keHoach xuống DB: khi
+      // INSERT (ô mới) nó hard-code ke_hoach=false; khi UPDATE (ô đã có) nó
+      // không đụng tới ke_hoach hiện có. Vậy initial.keHoach phải lấy từ
+      // initial CŨ (giá trị server thật trước lệnh gọi này), KHÔNG phải từ
+      // currentCell.keHoach optimistic -- nếu người dùng vừa tick Plan
+      // (chưa lưu) rồi mới trigger luồng R, giá trị Plan optimistic đó CHƯA
+      // hề được RPC này ghi xuống DB.
+      const prevInitial = state.initial[key] ?? EMPTY_CELL;
+      const newInitial: ThucHienCell = { ...newCell, keHoach: prevInitial.keHoach };
+      const initial: ThucHienMap = { ...state.initial, [key]: newInitial };
+      // Tính lại dirty bằng so sánh giá trị hiện tại (có thể còn giữ 1 lượt
+      // tick Plan optimistic chưa lưu) với initial mới -- KHÔNG xoá cứng,
+      // để Plan optimistic đó không bị "coi như đã lưu" một cách sai lệch
+      // (xem finding review cuối branch: silently mất Plan sau reload).
       const dirty = new Set(state.dirty);
-      dirty.delete(key);
+      if (isSameValue(newCell, newInitial)) {
+        dirty.delete(key);
+      } else {
+        dirty.add(key);
+      }
       return { cells, dirty, initial };
     }
 
