@@ -42,11 +42,19 @@ function RowStatusForm({ item }: { item: BatThuongListItem }) {
   // router.refresh() ở đây giúp bảng cập nhật ngay mà không cần code thêm
   // state cục bộ (đơn giản hơn, dữ liệu bảng này nhỏ nên chấp nhận được --
   // xem brief Task 2).
+  //
+  // Dùng `state` (identity của object) làm dependency thay vì `state.success`
+  // (boolean) -- useActionState trả về 1 object MỚI mỗi lần action chạy
+  // xong, kể cả khi `success` vẫn là `true` ở 2 lần submit liên tiếp thành
+  // công của CÙNG 1 dòng. Nếu dùng `state.success` làm dependency,
+  // Object.is(true, true) không đổi nên effect không chạy lại từ lần lưu
+  // thành công thứ 2 trở đi -- bảng sẽ không tự refresh nữa dù DB đã ghi
+  // đúng (bug tìm thấy ở review Task 2).
   useEffect(() => {
     if (state.success) {
       router.refresh();
     }
-  }, [state.success, router]);
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-1">
