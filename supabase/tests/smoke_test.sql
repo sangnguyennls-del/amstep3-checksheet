@@ -28,11 +28,18 @@ begin
     (v_admin, 'admin@test.local'),
     (v_adminm, 'adminm@test.local');
 
+  -- Fixture v_adminm có vai_tro='adminm' ngay từ đầu, chạy dưới current_user
+  -- 'postgres' (không phải service_role) và chưa có JWT context -- từ 0005,
+  -- trigger INSERT guard sẽ chặn đúng như thiết kế. Tắt trigger tạm thời chỉ
+  -- cho câu insert fixture này (tương đương seed data), bật lại ngay sau đó;
+  -- không ảnh hưởng gì tới các assert thật sự kiểm tra guard bên dưới.
+  alter table nguoidung disable trigger trg_guard_vai_tro_change;
   insert into nguoidung (id, msnv, ho_ten, vai_tro) values
     (v_user1, 'NV001', 'Nguyen Van A', 'user'),
     (v_user2, 'NV002', 'Tran Van B', 'user'),
     (v_admin, 'NV999', 'Admin Test', 'admin'),
     (v_adminm, 'NV998', 'AdminM Test', 'adminm');
+  alter table nguoidung enable trigger trg_guard_vai_tro_change;
 
   insert into thietbi (ma_thiet_bi, ten_thiet_bi, nguoi_phu_trach)
   values ('TEST-001', 'May test', 'NV001')
@@ -144,6 +151,28 @@ begin
   ) then
     raise exception 'FAIL: set_ket_qua_r_with_bat_thuong phải tạo BAT_THUONG tương ứng';
   end if;
+
+  -- Pha 3 fix (0005): guard adminm phải chặn cả INSERT, không chỉ UPDATE.
+  -- Trước 0005, trigger chỉ khai báo `before update` nên INSERT thẳng 1 dòng
+  -- vai_tro='adminm' sẽ lọt qua (không có backstop DB nào, chỉ có app-level
+  -- check trong createUser). Giả lập 1 Admin thường (không phải AdminM,
+  -- current_user vẫn là 'postgres' trong test này chứ không phải
+  -- 'service_role' nên guard adminm trong 0005 phải áp dụng).
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin::text)::text, true);
+  declare
+    v_user3 uuid := gen_random_uuid();
+  begin
+    insert into auth.users (id, email) values (v_user3, 'user3@test.local');
+    begin
+      insert into nguoidung (id, msnv, ho_ten, vai_tro)
+      values (v_user3, 'NV003', 'Le Van C', 'adminm');
+      raise exception 'FAIL rule5b: Admin thường không được INSERT thẳng dòng vai_tro=adminm (lẽ ra phải raise exception)';
+    exception when others then
+      if sqlerrm not like '%Chỉ AdminM%' then
+        raise;
+      end if;
+    end;
+  end;
 
   raise notice 'TAT CA ASSERT PHA 1 DEU PASS';
 end $$;
