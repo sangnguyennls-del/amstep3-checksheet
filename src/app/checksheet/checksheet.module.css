@@ -1,0 +1,46 @@
+/*
+ * Ô ngày chia chéo Plan (tam giác trên-phải) / Actual (tam giác dưới-trái),
+ * port từ CSS của hệ Google Apps Script cũ (Index.html, class bg-Y/bg-G/
+ * bg-R/bg-N) sang CSS module vì Tailwind không biểu diễn clip-path 2 tam
+ * giác gọn bằng utility class thuần.
+ */
+
+.dayCell {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  box-sizing: border-box;
+}
+
+.triPlan,
+.triAct {
+  position: absolute;
+  inset: 0;
+}
+
+/* Tam giác trên-phải: vùng Plan. */
+.triPlan {
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
+}
+
+/* Tam giác dưới-trái: vùng Actual. */
+.triAct {
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.bgY {
+  background-color: #facc15; /* vàng: Plan = có kế hoạch */
+}
+
+.bgG {
+  background-color: #22c55e; /* xanh lá: Actual = tốt */
+}
+
+.bgR {
+  background-color: #ef4444; /* đỏ: Actual = có bất thường */
+}
+
+.bgN {
+  background-color: #f9fafb; /* trắng/xám nhạt: chưa có dữ liệu */
+}

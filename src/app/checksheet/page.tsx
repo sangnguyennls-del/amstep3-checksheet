@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
+import { getFilterOptions } from "@/lib/checksheet/queries";
+import { ChecksheetApp } from "./ChecksheetApp";
 
 export default async function ChecksheetPage() {
   const supabase = await createClient();
@@ -18,6 +20,8 @@ export default async function ChecksheetPage() {
     .eq("id", user.id)
     .maybeSingle();
 
+  const filterOptions = await getFilterOptions(supabase);
+
   return (
     <main className="p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -33,10 +37,11 @@ export default async function ChecksheetPage() {
           </form>
         </div>
       </div>
-      <p className="text-sm text-gray-500">
-        Lưới chấm công sẽ được xây dựng ở Pha 4. Trang này hiện chỉ xác nhận đăng nhập/đăng xuất
-        hoạt động đúng (Pha 2).
-      </p>
+
+      <ChecksheetApp
+        currentUser={{ msnv: profile?.msnv ?? null, hoTen: profile?.ho_ten ?? user.email ?? "" }}
+        filterOptions={filterOptions}
+      />
     </main>
   );
 }
