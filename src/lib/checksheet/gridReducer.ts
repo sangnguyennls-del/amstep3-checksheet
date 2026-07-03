@@ -14,7 +14,18 @@ export type GridAction =
   | { type: "load"; cells: ThucHienMap }
   | { type: "setPlan"; congViecId: string; ngay: string; keHoach: boolean }
   | { type: "setAct"; congViecId: string; ngay: string; ketQua: KetQua }
-  | { type: "markSaved"; keys: string[]; savedAt: string }; // sau khi lưu thành công, đồng bộ lại initial + xoá dirty cho các key đó
+  | { type: "markSaved"; keys: string[]; savedAt: string } // sau khi lưu thành công TOÀN BỘ (cả 2 field, hoặc chỉ 1 field từng dirty), đồng bộ lại initial + xoá dirty cho các key đó
+  // markFieldsApplied: dùng khi upsert_thuc_hien() báo MỘT PHẦN của 1 ô được
+  // áp dụng (vd Plan applied nhưng Actual bị từ chối trong CÙNG 1 lần lưu --
+  // xem finding review Task 3). Chỉ field nào `planApplied`/`actApplied` mới
+  // được đồng bộ vào `initial`; field còn lại giữ nguyên initial cũ (KHÔNG
+  // đổi), nên nếu current value của field đó vẫn khác initial cũ, `dirty`
+  // được TÍNH LẠI (không xoá cứng) và ô đó vẫn hiện "chưa lưu" đúng thực tế.
+  | {
+      type: "markFieldsApplied";
+      entries: { congViecId: string; ngay: string; planApplied: boolean; actApplied: boolean }[];
+      savedAt: string;
+    };
 
 const EMPTY_CELL: ThucHienCell = { id: null, keHoach: false, ketQua: "N", updatedAt: null };
 
@@ -82,6 +93,37 @@ export function gridReducer(state: GridState, action: GridAction): GridState {
           initial[key] = withSavedAt;
         }
         dirty.delete(key);
+      }
+      return { cells, dirty, initial };
+    }
+
+    case "markFieldsApplied": {
+      const cells = { ...state.cells };
+      const initial = { ...state.initial };
+      const dirty = new Set(state.dirty);
+      for (const { congViecId, ngay, planApplied, actApplied } of action.entries) {
+        const key = cellKey(congViecId, ngay);
+        const cell = cells[key];
+        if (!cell) continue;
+        const prevInitial = initial[key] ?? EMPTY_CELL;
+        // Chỉ "khoá" lại field đã thực sự applied vào initial mới; field bị
+        // từ chối giữ nguyên initial CŨ (giá trị server thật vẫn có), để so
+        // sánh isSameValue bên dưới tự phát hiện field đó còn khác initial
+        // (tức vẫn dirty) mà không cần đảo ngược giá trị current của người
+        // dùng đang thao tác.
+        const newInitial: ThucHienCell = {
+          ...prevInitial,
+          keHoach: planApplied ? cell.keHoach : prevInitial.keHoach,
+          ketQua: actApplied ? cell.ketQua : prevInitial.ketQua,
+          updatedAt: planApplied || actApplied ? action.savedAt : prevInitial.updatedAt,
+          id: cell.id ?? prevInitial.id,
+        };
+        initial[key] = newInitial;
+        if (isSameValue(cell, newInitial)) {
+          dirty.delete(key);
+        } else {
+          dirty.add(key);
+        }
       }
       return { cells, dirty, initial };
     }

@@ -89,6 +89,54 @@ function run() {
     gridReducer(state, { type: "markSaved", keys: ["khong-ton-tai"], savedAt });
   });
 
+  // --- markFieldsApplied: fix review finding Task 3 (Important) -- 1 ô có
+  // CẢ Plan lẫn Actual dirty trong cùng 1 lần lưu, server chỉ applied được
+  // Plan (Actual bị từ chối, vd ngoài cửa sổ +-4 ngày). Field bị từ chối
+  // KHÔNG được ghi vào `initial`, nên ô đó phải VẪN CÒN dirty sau đó (chỉ
+  // phần Actual), khác hẳn `markSaved` (vốn coi cả ô là sạch bất kể field nào
+  // thực sự applied).
+  state = initialGridState({
+    [k1]: { id: "id-1", keHoach: false, ketQua: "G", updatedAt: "2026-06-01T00:00:00Z" },
+  });
+  state = gridReducer(state, { type: "setPlan", congViecId: "CV1", ngay: "2026-07-01", keHoach: true });
+  state = gridReducer(state, { type: "setAct", congViecId: "CV1", ngay: "2026-07-01", ketQua: "N" });
+  assert.ok(state.dirty.has(k1), "cả Plan lẫn Actual vừa đổi nên ô phải dirty");
+
+  const partialSavedAt = "2026-07-03T00:00:00Z";
+  state = gridReducer(state, {
+    type: "markFieldsApplied",
+    entries: [{ congViecId: "CV1", ngay: "2026-07-01", planApplied: true, actApplied: false }],
+    savedAt: partialSavedAt,
+  });
+  assert.ok(
+    state.dirty.has(k1),
+    "markFieldsApplied: Actual bị từ chối (actApplied=false) nên ô phải VẪN CÒN dirty, không được xoá sạch",
+  );
+  assert.strictEqual(
+    state.initial[k1].keHoach,
+    true,
+    "markFieldsApplied: Plan applied phải được đồng bộ vào initial",
+  );
+  assert.strictEqual(
+    state.initial[k1].ketQua,
+    "G",
+    "markFieldsApplied: Actual bị từ chối phải GIỮ NGUYÊN initial cũ (G), không được đồng bộ giá trị N vừa gõ",
+  );
+  assert.strictEqual(
+    state.cells[k1].ketQua,
+    "N",
+    "markFieldsApplied: giá trị HIỆN TẠI người dùng đang gõ (N) không bị đảo ngược -- vẫn hiện trên UI, chỉ không được coi là đã lưu",
+  );
+
+  // Khi CẢ 2 field đều applied, ô phải sạch hoàn toàn (tương đương markSaved).
+  state = gridReducer(state, {
+    type: "markFieldsApplied",
+    entries: [{ congViecId: "CV1", ngay: "2026-07-01", planApplied: true, actApplied: true }],
+    savedAt: "2026-07-04T00:00:00Z",
+  });
+  assert.ok(!state.dirty.has(k1), "markFieldsApplied: cả 2 field applied thì ô phải hết dirty");
+  assert.strictEqual(state.initial[k1].ketQua, "N", "markFieldsApplied: Actual applied lần này phải đồng bộ initial");
+
   // --- Đảm bảo hàm là THUẦN: không mutate state đầu vào ---
   const before = initialGridState({});
   const beforeSnapshot = JSON.parse(JSON.stringify({ cells: before.cells, dirty: [...before.dirty] }));

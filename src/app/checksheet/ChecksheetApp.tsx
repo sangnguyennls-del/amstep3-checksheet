@@ -24,7 +24,11 @@ function parseCellKey(key: string): { congViecId: string; ngay: string } {
 type RejectedCell = {
   congViecId: string;
   ngay: string;
-  status: "skipped" | "conflict";
+  // "partial" = status server trả về là 'applied' nhưng CHỈ 1 trong 2 field
+  // (Plan/Actual) thực sự được áp dụng -- field còn lại bị từ chối trong
+  // CÙNG lần lưu đó (xem finding review Task 3: server trước đây báo
+  // 'applied' cho cả dòng, che mất việc 1 field bị âm thầm rớt).
+  status: "skipped" | "conflict" | "partial";
   reason: string | null;
 };
 
@@ -33,6 +37,12 @@ type UpsertResultRow = {
   ngay: string;
   status: "applied" | "skipped" | "conflict";
   reason: string | null;
+  // Thêm ở migration 0006: null = field không nằm trong request; true/false =
+  // field có được yêu cầu và có/không được áp dụng. Trước đây client chỉ đọc
+  // `status` chung cho cả dòng, không phân biệt được field nào trong 1 dòng
+  // 'applied' đã thực sự bị từ chối.
+  plan_applied: boolean | null;
+  act_applied: boolean | null;
 };
 
 function pad2(n: number): string {
@@ -42,6 +52,25 @@ function pad2(n: number): string {
 function defaultMonthValue(): string {
   const now = new Date();
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+}
+
+/**
+ * Ngày hiện tại theo giờ Việt Nam (Asia/Ho_Chi_Minh), dạng "YYYY-MM-DD" --
+ * dùng làm gợi ý UI cho cửa sổ +-4 ngày (actWindow.ts). Trước đây dùng
+ * `new Date().toISOString().slice(0, 10)` -- đây là ngày lịch UTC, có thể lệch
+ * 1 ngày so với "hôm nay" thật ở VN (UTC+7) vào khoảng 17:00-24:00 giờ VN, làm
+ * gợi ý cửa sổ +-4 ngày sai 1 ngày dù không ảnh hưởng quyền lưu thật (server
+ * mới là nơi quyết định, dùng `today_vn()` trong 0002_functions_triggers.sql).
+ */
+function vnTodayIso(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** "YYYY-MM" -> { thangDau: "YYYY-MM-01", thangCuoi: "YYYY-MM-<số ngày cuối tháng>" }. */
@@ -242,6 +271,13 @@ export function ChecksheetApp({
     setSaving(true);
     setSaveError(null);
     setRejectedCells([]);
+    // Khai báo NGOÀI try để nhánh catch (lỗi mạng/RPC throw trước khi có kết
+    // quả) vẫn hiển thị được các ô bị chặn ở client (ket_qua="R" gửi qua nút
+    // Lưu thường) -- fix Minor finding: trước đây blockedRejected chỉ được
+    // set vào state ở nhánh thành công, nên nếu RPC throw (network lỗi, RLS
+    // lỗi không liên quan...) thì các ô bị chặn này biến mất khỏi UI dù đã
+    // được tính đúng.
+    let blockedRejectedForCatch: RejectedCell[] = [];
     try {
       const supabase = createClient();
       const { thangDau, thangCuoi } = monthRange(monthValue);
@@ -306,6 +342,8 @@ export function ChecksheetApp({
         };
       });
 
+      blockedRejectedForCatch = blockedRejected;
+
       if (payloadItems.length === 0) {
         setRejectedCells(blockedRejected);
         return;
@@ -315,29 +353,70 @@ export function ChecksheetApp({
       if (error) throw error;
 
       const results = (data ?? []) as UpsertResultRow[];
-      const appliedKeys: string[] = [];
+      // Dùng "markFieldsApplied" (không phải "markSaved") cho MỌI dòng
+      // status='applied' -- kể cả khi cả 2 field đều applied, action này vẫn
+      // cho kết quả đúng (tương đương markSaved), nhưng còn xử lý ĐÚNG trường
+      // hợp CHỈ 1 field applied: field bị từ chối (`plan_applied`/`act_applied`
+      // === false, thêm ở migration 0006) sẽ KHÔNG được ghi vào `initial`,
+      // nên ô đó vẫn hiện dirty/chưa lưu cho đúng phần bị rớt -- đây chính là
+      // fix cho finding "Important" (server trả 'applied' cho cả dòng dù 1
+      // field bị âm thầm từ chối).
+      const appliedEntries: {
+        congViecId: string;
+        ngay: string;
+        planApplied: boolean;
+        actApplied: boolean;
+      }[] = [];
       const rejected: RejectedCell[] = [...blockedRejected];
 
       for (const r of results) {
+        const planApplied = r.plan_applied === true;
+        const actApplied = r.act_applied === true;
+        const planDenied = r.plan_applied === false;
+        const actDenied = r.act_applied === false;
+
         if (r.status === "applied") {
-          appliedKeys.push(cellKey(r.congviec_id, r.ngay));
+          appliedEntries.push({ congViecId: r.congviec_id, ngay: r.ngay, planApplied, actApplied });
+
+          // Lưu MỘT PHẦN: dòng được báo 'applied' (ít nhất 1 field áp dụng
+          // thành công) nhưng field còn lại (được yêu cầu) bị từ chối trong
+          // CÙNG lần lưu -- ví dụ tô cả Plan lẫn Actual trên 1 ô rồi Lưu,
+          // Plan hợp lệ nhưng Actual ngoài cửa sổ +-4 ngày. Phải cảnh báo
+          // riêng, KHÔNG được để lẫn với "đã lưu sạch".
+          if (planDenied || actDenied) {
+            const savedParts: string[] = [];
+            if (planApplied) savedParts.push("Plan đã lưu");
+            if (actApplied) savedParts.push("Actual đã lưu");
+            const deniedParts: string[] = [];
+            if (planDenied) deniedParts.push("Plan bị từ chối");
+            if (actDenied) deniedParts.push("Actual bị từ chối");
+            const savedText = savedParts.length > 0 ? savedParts.join(", ") : "Không có field nào được lưu";
+            rejected.push({
+              congViecId: r.congviec_id,
+              ngay: r.ngay,
+              status: "partial",
+              reason: `${savedText}, nhưng ${deniedParts.join(", ")}${r.reason ? ` (${r.reason})` : ""}.`,
+            });
+          }
         } else {
           rejected.push({ congViecId: r.congviec_id, ngay: r.ngay, status: r.status, reason: r.reason });
         }
       }
 
-      if (appliedKeys.length > 0) {
-        const appliedCongViecIds = Array.from(
-          new Set(appliedKeys.map((k) => parseCellKey(k).congViecId)),
-        );
+      if (appliedEntries.length > 0) {
+        const appliedCongViecIds = Array.from(new Set(appliedEntries.map((e) => e.congViecId)));
         const refreshed = await getThucHien(supabase, appliedCongViecIds, thangDau, thangCuoi);
-        const savedAt = refreshed[appliedKeys[0]]?.updatedAt ?? new Date().toISOString();
-        dispatch({ type: "markSaved", keys: appliedKeys, savedAt });
+        const firstKey = cellKey(appliedEntries[0].congViecId, appliedEntries[0].ngay);
+        const savedAt = refreshed[firstKey]?.updatedAt ?? new Date().toISOString();
+        dispatch({ type: "markFieldsApplied", entries: appliedEntries, savedAt });
       }
 
       setRejectedCells(rejected);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Không lưu được dữ liệu checksheet");
+      if (blockedRejectedForCatch.length > 0) {
+        setRejectedCells(blockedRejectedForCatch);
+      }
     } finally {
       setSaving(false);
     }
@@ -349,7 +428,7 @@ export function ChecksheetApp({
   const hasDirty = gridState.dirty.size > 0;
   // "Hôm nay" chỉ dùng để tô gợi ý cửa sổ +-4 ngày ở Cell (xem actWindow.ts)
   // -- không ảnh hưởng gì tới quyết định lưu thật (server quyết định).
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = vnTodayIso();
 
   return (
     <div>
@@ -465,8 +544,12 @@ export function ChecksheetApp({
             {rejectedCells.map((r, idx) => (
               <li key={`${r.congViecId}_${r.ngay}_${idx}`}>
                 Ngày {Number(r.ngay.slice(8, 10))}, {r.congViecId}:{" "}
-                {r.status === "conflict" ? "Xung đột dữ liệu" : "Bị từ chối"} —{" "}
-                {r.reason ?? "Không rõ lý do"}
+                {r.status === "conflict"
+                  ? "Xung đột dữ liệu"
+                  : r.status === "partial"
+                    ? "Lưu một phần"
+                    : "Bị từ chối"}{" "}
+                — {r.reason ?? "Không rõ lý do"}
               </li>
             ))}
           </ul>
