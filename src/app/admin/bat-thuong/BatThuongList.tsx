@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BatThuongListItem } from "@/lib/checksheet/batThuongList";
+import {
+  updateBatThuongStatus,
+  updateBatThuongInitialState,
+} from "@/app/actions/batThuong";
 
 const TRANG_THAI_LIST = ["Mở", "Đang xử lý", "Đã đóng"] as const;
 
@@ -21,6 +26,65 @@ function formatDate(iso: string | null): string {
 // Mặc định chọn tất cả trạng thái TRỪ "Đã đóng" -- đa số công việc quản lý
 // tập trung vào cái chưa đóng (xem brief Task 1).
 const DEFAULT_SELECTED = new Set<string>(["Mở", "Đang xử lý"]);
+
+// 1 form độc lập mỗi dòng (useActionState riêng) -- để lỗi ở dòng này không
+// chặn submit dòng khác, đúng pattern UsersTable.tsx/EquipmentList.tsx.
+function RowStatusForm({ item }: { item: BatThuongListItem }) {
+  const router = useRouter();
+  const [state, formAction, isPending] = useActionState(
+    updateBatThuongStatus,
+    updateBatThuongInitialState,
+  );
+  const [trangThai, setTrangThai] = useState<(typeof TRANG_THAI_LIST)[number]>(item.trangThai);
+  const [ngayKhacPhuc, setNgayKhacPhuc] = useState(item.ngayKhacPhuc ?? "");
+
+  // revalidatePath trong Server Action đã đủ cho lần load sau, nhưng
+  // router.refresh() ở đây giúp bảng cập nhật ngay mà không cần code thêm
+  // state cục bộ (đơn giản hơn, dữ liệu bảng này nhỏ nên chấp nhận được --
+  // xem brief Task 2).
+  useEffect(() => {
+    if (state.success) {
+      router.refresh();
+    }
+  }, [state.success, router]);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-1">
+      <input type="hidden" name="id" value={item.id} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select
+          name="trangThai"
+          value={trangThai}
+          onChange={(e) => setTrangThai(e.target.value as (typeof TRANG_THAI_LIST)[number])}
+          className="rounded-md border border-gray-300 px-1.5 py-1 text-xs"
+        >
+          {TRANG_THAI_LIST.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <input
+          type="date"
+          name="ngayKhacPhuc"
+          value={ngayKhacPhuc}
+          onChange={(e) => setNgayKhacPhuc(e.target.value)}
+          disabled={trangThai !== "Đã đóng"}
+          className="rounded-md border border-gray-300 px-1.5 py-1 text-xs disabled:bg-gray-100 disabled:text-gray-400"
+        />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          {isPending ? "Đang lưu..." : "Lưu"}
+        </button>
+      </div>
+      {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
+      {state.success ? <p className="text-xs text-green-600">Đã lưu.</p> : null}
+    </form>
+  );
+}
 
 export function BatThuongList({ initialItems }: { initialItems: BatThuongListItem[] }) {
   const [selected, setSelected] = useState<Set<string>>(DEFAULT_SELECTED);
@@ -85,6 +149,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
               <th className="px-3 py-2">Trạng thái</th>
               <th className="px-3 py-2">Người ghi</th>
               <th className="px-3 py-2">Ảnh</th>
+              <th className="px-3 py-2">Đổi trạng thái</th>
             </tr>
           </thead>
           <tbody>
@@ -121,11 +186,14 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
                     "—"
                   )}
                 </td>
+                <td className="px-3 py-2">
+                  <RowStatusForm item={item} />
+                </td>
               </tr>
             ))}
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={11} className="px-3 py-6 text-center text-gray-400">
                   Không có bất thường nào phù hợp bộ lọc.
                 </td>
               </tr>
