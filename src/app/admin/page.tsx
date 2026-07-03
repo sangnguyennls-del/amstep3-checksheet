@@ -12,6 +12,11 @@ const SECTIONS = [
     desc: "Quản lý cây thiết bị / chi tiết / công việc",
   },
   {
+    href: "/admin/bat-thuong",
+    title: "Bất thường",
+    desc: "Danh sách và trạng thái các bất thường đã ghi nhận",
+  },
+  {
     href: "/admin/settings",
     title: "Cài đặt",
     desc: "Cấu hình khoá thời gian, chế độ bảo trì",
