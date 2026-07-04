@@ -47,3 +47,8 @@ supabase/.branches
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Pha 7 data migration: file xlsx nguồn thật + báo cáo/temp export không commit
+*.xlsx
+scripts/migrate/*.log
+scripts/migrate/tmp/
