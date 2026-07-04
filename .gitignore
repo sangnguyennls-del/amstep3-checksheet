@@ -52,3 +52,7 @@ next-env.d.ts
 *.xlsx
 scripts/migrate/*.log
 scripts/migrate/tmp/
+
+# Pha 8 audit export/purge: file export .ndjson.gz có thể chứa dữ liệu thật
+# (tên/MSNV người dùng) — không commit vào git.
+scripts/audit/tmp/

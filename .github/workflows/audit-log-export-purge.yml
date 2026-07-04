@@ -1,0 +1,39 @@
+# Pha 8 (Task 2) — export + purge định kỳ bảng audit_log để không chạm trần
+# 500MB free tier Supabase. Xem docs/plans/pha8-audit-cron.md mục "Task 2".
+#
+# Lịch: hàng tuần (Chủ nhật 02:00 UTC) + cho phép chạy thủ công qua
+# workflow_dispatch (vd để test hoặc export ngay khi cần, không chờ tới lịch).
+name: Audit log export + purge
+
+on:
+  schedule:
+    - cron: "0 2 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  export-and-purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export + purge audit_log (--commit)
+        run: node scripts/audit/exportAndPurge.ts --commit
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Upload export artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-log-export-${{ github.run_id }}
+          path: scripts/audit/tmp/*.ndjson.gz
+          retention-days: 400
+          if-no-files-found: ignore
