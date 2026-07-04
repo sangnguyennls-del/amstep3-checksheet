@@ -22,6 +22,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/bat-thuong" className="text-gray-600 hover:text-blue-600">
           Bất thường
         </Link>
+        <Link href="/admin/stats" className="text-gray-600 hover:text-blue-600">
+          Thống kê
+        </Link>
         <Link href="/admin/settings" className="text-gray-600 hover:text-blue-600">
           Cài đặt
         </Link>

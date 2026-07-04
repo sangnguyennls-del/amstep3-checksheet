@@ -17,6 +17,11 @@ const SECTIONS = [
     desc: "Danh sách và trạng thái các bất thường đã ghi nhận",
   },
   {
+    href: "/admin/stats",
+    title: "Thống kê",
+    desc: "Tỉ lệ hoàn thành Plan theo thiết bị, lọc theo Kíp/Nhân viên/Trạng thái",
+  },
+  {
     href: "/admin/settings",
     title: "Cài đặt",
     desc: "Cấu hình khoá thời gian, chế độ bảo trì",
