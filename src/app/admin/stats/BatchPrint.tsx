@@ -6,7 +6,7 @@
 // thiết bị kế tiếp. TÁI DÙNG `ChecksheetTable` y nguyên ở chế độ chỉ xem
 // (editability={} -- mọi ô mặc định KHÔNG cho sửa, xem docstring prop
 // `editability` của ChecksheetTable) -- KHÔNG viết component bảng mới.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getCongViecRows, getThucHien } from "@/lib/checksheet/queries";
 import { monthRange } from "@/app/checksheet/ChecksheetApp";
@@ -45,20 +45,51 @@ export function BatchPrint({
   // disabled nhưng vẫn phòng thủ thêm ở đây cho chắc).
   const runningRef = useRef(false);
 
+  // Fix review Task 3 (Important #1): nếu component unmount giữa hàng đợi
+  // (vd người dùng điều hướng khỏi /admin/stats) -- vòng lặp `handleClick`
+  // là 1 async closure không tự biết component đã unmount, sẽ tiếp tục gọi
+  // fetch/window.print() cho các thiết bị còn lại NGAY CẢ KHI người dùng
+  // đang xem trang khác (window.print() là lời gọi toàn cục, không bị giới
+  // hạn theo component đã unmount) và gọi setState trên state đã unmount.
+  // `isMountedRef` được kiểm tra trước MỌI bước có side-effect (setState,
+  // window.print()) để dừng hẳn hàng đợi ngay khi phát hiện unmount.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Fix review Task 3 (Important #2): banner tiến trình trước đây đọc thẳng
+  // từ prop `devices` (đọc theo render HIỆN TẠI) để suy ra "thiết bị đang
+  // in" -- nếu người dùng đổi bộ lọc Kíp/Nhân viên ở StatsTable trong lúc
+  // hàng đợi đang chạy, `devices` đổi theo nhưng vòng lặp `handleClick` vẫn
+  // in đúng theo danh sách CŨ (biến cục bộ đóng trong closure) -- banner sẽ
+  // hiện SAI tên thiết bị (hoặc mất hẳn nếu index vượt quá mảng mới). Chụp
+  // snapshot vào STATE (không dùng ref -- đọc `.current` của ref ngay trong
+  // JSX bị ESLint `react-hooks/refs` chặn vì React Compiler không theo dõi
+  // được thay đổi của ref để re-render đúng lúc) ngay lúc bắt đầu, banner
+  // đọc từ state này thay vì đọc thẳng prop `devices`.
+  const [runDevices, setRunDevices] = useState<PrintDevice[]>([]);
+
   const { thangDau, thangCuoi } = monthRange(monthValue);
   const todayIso = vnTodayIso();
 
-  async function printOneDevice(device: PrintDevice): Promise<void> {
+  /** Trả về `false` nếu bị huỷ giữa chừng do component unmount (dừng hàng đợi, không phải lỗi). */
+  async function printOneDevice(device: PrintDevice): Promise<boolean> {
     const supabase = createClient();
     const congViecRows = await getCongViecRows(supabase, device.thietBiId, thangDau, thangCuoi);
+    if (!isMountedRef.current) return false;
     const congViecIds = congViecRows.map((r) => r.congViecId);
     const thucHienMap = await getThucHien(supabase, congViecIds, thangDau, thangCuoi);
+    if (!isMountedRef.current) return false;
 
     setCurrentRows(congViecRows);
     setCurrentThucHien(thucHienMap);
 
     // Đợi 1 khoảng ngắn cho React render xong bảng vừa cập nhật trước khi in.
     await new Promise((resolve) => setTimeout(resolve, RENDER_SETTLE_MS));
+    if (!isMountedRef.current) return false;
 
     await new Promise<void>((resolve) => {
       let settled = false;
@@ -72,6 +103,7 @@ export function BatchPrint({
       setTimeout(finish, AFTER_PRINT_FALLBACK_MS);
       window.print();
     });
+    return isMountedRef.current;
   }
 
   async function handleClick() {
@@ -82,28 +114,44 @@ export function BatchPrint({
     );
     if (!confirmed) return;
 
+    // Chụp snapshot vào 1 BIẾN CỤC BỘ (không phải state/ref) ngay lúc bắt
+    // đầu -- vòng lặp lặp theo biến này, không đọc thẳng prop `devices` (có
+    // thể đổi giữa chừng nếu người dùng đổi bộ lọc trong lúc đang in). Biến
+    // cục bộ được đóng đúng trong closure của `handleClick`, không bị ảnh
+    // hưởng bởi re-render, khác với đọc trực tiếp prop ở mỗi lần lặp.
+    const devicesSnapshot = devices;
+    setRunDevices(devicesSnapshot); // để banner (render) hiện đúng theo snapshot này
+
     runningRef.current = true;
     setRunning(true);
     setDoneCount(null);
     setErrorMsg(null);
 
     try {
-      for (let i = 0; i < devices.length; i++) {
+      for (let i = 0; i < devicesSnapshot.length; i++) {
+        if (!isMountedRef.current) break;
         setCurrentIndex(i);
-        await printOneDevice(devices[i]);
+        const ok = await printOneDevice(devicesSnapshot[i]);
+        if (!ok) break;
       }
-      setDoneCount(devices.length);
+      if (isMountedRef.current) {
+        setDoneCount(devicesSnapshot.length);
+      }
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "Lỗi khi in hàng loạt");
+      if (isMountedRef.current) {
+        setErrorMsg(e instanceof Error ? e.message : "Lỗi khi in hàng loạt");
+      }
     } finally {
       runningRef.current = false;
-      setRunning(false);
-      setCurrentRows([]);
-      setCurrentThucHien({});
+      if (isMountedRef.current) {
+        setRunning(false);
+        setCurrentRows([]);
+        setCurrentThucHien({});
+      }
     }
   }
 
-  const currentDevice = running ? devices[currentIndex] : null;
+  const currentDevice = running ? runDevices[currentIndex] : null;
 
   return (
     <div className="mt-4">
@@ -119,14 +167,12 @@ export function BatchPrint({
 
         {running && currentDevice ? (
           <p className="text-sm text-gray-500">
-            Đang in thiết bị {currentIndex + 1}/{devices.length}: {currentDevice.tenThietBi}
+            Đang in thiết bị {currentIndex + 1}/{runDevices.length}: {currentDevice.tenThietBi}
           </p>
         ) : null}
 
         {!running && doneCount !== null ? (
-          <p className="text-sm text-green-700">
-            Đã in xong {doneCount}/{doneCount} thiết bị.
-          </p>
+          <p className="text-sm text-green-700">Đã in xong {doneCount} thiết bị.</p>
         ) : null}
 
         {errorMsg ? <p className="text-sm text-red-600">{errorMsg}</p> : null}
