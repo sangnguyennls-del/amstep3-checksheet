@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getCongViecRows, getThucHien, parseNhanVienMsnv } from "@/lib/checksheet/queries";
 import { getEditability, type EditabilityMap } from "@/lib/checksheet/editability";
 import { gridReducer, initialGridState } from "@/lib/checksheet/gridReducer";
+import { CHECKSHEET_SAVED_EVENT } from "@/lib/checksheet/notifications";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
@@ -230,6 +231,9 @@ export function ChecksheetApp({
       moTa: result.moTa,
     });
     setBatThuongTarget(null);
+    // Ghi nhận bất thường cũng là 1 lần lưu Actual thật -- có thể vừa xoá 1
+    // mục "thiếu Actual" khỏi chuông, nên báo cho NotificationBell tải lại.
+    window.dispatchEvent(new Event(CHECKSHEET_SAVED_EVENT));
   }
 
   /**
@@ -430,6 +434,10 @@ export function ChecksheetApp({
         const firstKey = cellKey(appliedEntries[0].congViecId, appliedEntries[0].ngay);
         const savedAt = refreshed[firstKey]?.updatedAt ?? new Date().toISOString();
         dispatch({ type: "markFieldsApplied", entries: appliedEntries, savedAt });
+        // Có field được áp dụng thật -- báo cho NotificationBell tải lại (có
+        // thể vừa xoá 1 mục "thiếu Plan/Actual" khỏi chuông). KHÔNG dispatch
+        // nếu toàn bộ payload bị skipped/conflict (nhánh này không chạy tới).
+        window.dispatchEvent(new Event(CHECKSHEET_SAVED_EVENT));
       }
 
       setRejectedCells(rejected);

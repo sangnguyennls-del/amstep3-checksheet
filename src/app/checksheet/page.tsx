@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
 import { getFilterOptions } from "@/lib/checksheet/queries";
 import { ChecksheetApp } from "./ChecksheetApp";
+import { NotificationBell } from "./NotificationBell";
 
 export default async function ChecksheetPage() {
   const supabase = await createClient();
@@ -27,6 +28,7 @@ export default async function ChecksheetPage() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold">Checksheet AM Bước 3</h1>
         <div className="flex items-center gap-3 text-sm text-gray-600">
+          <NotificationBell msnv={profile?.msnv ?? null} />
           <span>
             {profile?.ho_ten ?? user.email} ({profile?.vai_tro || "user"})
           </span>
