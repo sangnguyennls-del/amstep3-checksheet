@@ -77,7 +77,11 @@ export function StatsTable({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+      {/* no-print: xem comment trong src/app/admin/layout.tsx -- print.css chỉ
+          ẩn phần tử có class `no-print`, không tự ẩn "mọi thứ ngoài
+          .print-area". Bộ lọc + bảng thống kê phải tự đánh dấu để bản in
+          hàng loạt (BatchPrint bên dưới) chỉ còn đúng checksheet thiết bị. */}
+      <div className="no-print mb-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col text-sm text-gray-600">
           Tháng
           <input
@@ -132,7 +136,7 @@ export function StatsTable({
         </label>
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-white">
+      <div className="no-print overflow-x-auto rounded-md border bg-white">
         <table className="min-w-full text-sm">
           <thead className="border-b bg-gray-50 text-left text-gray-600">
             <tr>

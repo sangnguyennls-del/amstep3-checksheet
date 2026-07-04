@@ -11,7 +11,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="flex items-center gap-4 border-b bg-white px-6 py-3 text-sm">
+      {/* no-print: khi in hàng loạt từ /admin/stats (Task 3, Pha 6), print.css
+          chỉ ẩn phần tử có class `no-print` (mô hình opt-out, không phải
+          "ẩn tất cả trừ .print-area") -- layout admin (nav) là 1 trong các
+          phần khung cần ẩn để bản in chỉ còn đúng checksheet thiết bị. */}
+      <nav className="no-print flex items-center gap-4 border-b bg-white px-6 py-3 text-sm">
         <span className="font-semibold text-gray-800">Quản trị</span>
         <Link href="/admin/users" className="text-gray-600 hover:text-blue-600">
           Người dùng
