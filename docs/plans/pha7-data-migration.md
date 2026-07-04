@@ -15,7 +15,7 @@ File có 10 sheet, chỉ dùng 6 sheet, bỏ qua 4 sheet còn lại:
 | `Users` | ✅ Dùng | 998 dòng, nhưng chỉ **58 dòng thật** (xem bên dưới) |
 | `Images` | ✅ Dùng | 149 dòng, `Thiết bị` + `URL` Drive |
 | `Thiết bị ` | ✅ Dùng | **CHÚ Ý dấu cách cuối tên sheet** (`"Thiết bị "`, 9 ký tự) — danh sách đầy đủ 169 thiết bị (chỉ 1 cột mã, không có tên hiển thị/tổ chức) |
-| `Logs` | ✅ Dùng | 2324 dòng, audit log tóm tắt |
+| `Logs` | ✅ Dùng | 2324 dòng bao gồm header → **2323 dòng dữ liệu thật** (số đã sửa sau khi Task 1 đo trực tiếp; "2324" ban đầu đếm nhầm gồm cả header) |
 | `Bản sao của Logs` | ❌ Bỏ qua | Bản backup cũ |
 | `Data` | ✅ Dùng | 10678 dòng (10585 dòng thật, xem bên dưới), lưới chấm công 31 ngày |
 | `Query` | ❌ Bỏ qua | 59 dòng device→caretaker — đã hỏi người dùng, xác nhận đây chỉ là sheet nháp, KHÔNG dùng để suy ra `nguoi_phu_trach` |
@@ -57,7 +57,8 @@ Sheet `Config` thì header ĐÚNG hoàn toàn với nội dung (đã xác minh),
    - **Username cho Auth = cột `User`** (vd `"vanvv"`, `"phuongnh"`) — **KHÔNG dùng MSNV** — khớp đúng với `usernameToEmail()` (`src/lib/auth/username.ts`) và luồng `createUser` (`src/app/actions/users.ts`) đã build ở Pha 3: 2 trường `username` và `msnv` tách biệt, `msnv` chỉ là metadata lưu trong `nguoidung`, KHÔNG dùng để build email. Điều này giữ đúng thói quen đăng nhập cũ bằng username quen thuộc, tốt hơn cả CLAUDE.md dự tính (CLAUDE.md ghi email dạng `${msnv}@pvcfc.internal` nhưng code THẬT ĐÃ BUILD dùng `${username}@pvcfc.internal` — làm theo code thật đang chạy, không theo văn bản kế hoạch cũ).
 
 2. **Config**: 148 thiết bị duy nhất. Các trường tổ chức theo thiết bị (**Xưởng, Kíp, Cụm, Khu vực, Lãnh đạo, Trưởng ca, Tên**) **nhất quán 100% trong cùng 1 thiết bị** (đã kiểm tra toàn bộ 148 thiết bị, 0 xung đột) — an toàn để suy ra 1 giá trị duy nhất mỗi trường cho THIETBI.
-   - **105 dòng trùng lặp hoàn toàn** (cùng thiết bị+nội dung+điều kiện+loại) trong tổng 3332 tổ hợp CONGVIEC — khi build CHITIET/CONGVIEC, **dedupe theo (thietbi, ten_chi_tiet, dieu_kien_co_ban, loai)**, giữ STT nhỏ nhất nếu trùng.
+   - **104 nhóm trùng lặp hoàn toàn (117 dòng dư)** (cùng thiết bị+nội dung+điều kiện+loại) trong tổng **3331 tổ hợp CONGVIEC** duy nhất trên 3448 dòng Config thật — khi build CHITIET/CONGVIEC, **dedupe theo (thietbi, ten_chi_tiet, dieu_kien_co_ban, loai)**, giữ STT nhỏ nhất nếu trùng. (Số đã sửa sau khi Task 1 đo trực tiếp — bản phân tích ban đầu ghi nhầm "3332 tổ hợp / 105 dòng trùng"; số liệu ở đây là số liệu chuẩn, tự nhất quán: 3331 + 117 = 3448.)
+   - **Task 1 phát hiện thêm 1 vấn đề khớp dữ liệu KHÔNG có trong phân tích ban đầu**: cùng 1 `dieu_kien_co_ban` được Config ghi CÓ `\n` giữa các câu nhưng Data ghi KHÔNG có `\n` (chỉ cách nhau bằng dấu cách) — nếu so khớp nguyên văn sẽ coi là 2 điều kiện khác nhau, gây ~649 orphan giả. Đã xử lý bằng cách thu gọn mọi khoảng trắng liên tiếp (kể cả xuống dòng) thành 1 dấu cách trước khi dùng `ten_chi_tiet`/`dieu_kien_co_ban` làm khoá dedupe/match, áp dụng cho CẢ Config lẫn Data.
    - **13 thiết bị trong Config KHÔNG có trong danh sách đầy đủ (sheet "Thiết bị ")** — đã phân tích kỹ từng trường hợp (xem bảng "Bảng xử lý mã ghép" bên dưới).
 
 3. **Data**: 10678 dòng, 92 dòng hoàn toàn trống (Tháng/Năm rỗng — dòng đệm) → **10585 dòng thật**, trải 5 tháng (`03/2026` đến `07/2026`).
@@ -66,6 +67,7 @@ Sheet `Config` thì header ĐÚNG hoàn toàn với nội dung (đã xác minh),
    - Định dạng ô ngày đã xác minh đúng 5 giá trị: `N|N, N|G, Y|N, Y|G, Y|R` (Plan Y/N ở trái, Actual G/N/R ở phải) — parse độc lập: `ke_hoach = (trái === "Y")`, `ket_qua = phải` (phải là 1 trong `G/N/R`, khác thì log cảnh báo và coi như `N`).
    - **CHỈ tạo THUC_HIEN cho ô KHÁC `"N|N"`** (đúng nguyên tắc lưu thưa của schema mới).
    - Cột người chỉnh sửa cuối (cột 39, TÊN không phải MSNV) dùng để suy ra `nguoi_thuc_hien` qua bảng tra cứu Tên→MSNV (từ Users) — nếu rỗng hoặc không tra được, để `null`.
+   - **Phát hiện thêm ở Task 1 (không có trong phân tích ban đầu)**: sheet `Data` luôn có đúng 31 cột ngày cố định (1..31) bất kể tháng đó có bao nhiêu ngày thật — tháng `06/2026` chỉ có 30 ngày nhưng cột "31" của tháng đó có **594 ô mang dữ liệu thật khác `"N|N"`** (nghi do tool tự động tô Plan mỗi N ngày của hệ cũ không kiểm tra số ngày thật trong tháng). Đây là ngày KHÔNG tồn tại trên lịch thật — **không được tạo THUC_HIEN với ngày giả** (không tự gán sang ngày 30 hay ngày 1 tháng sau). **Quyết định xử lý**: ghi các dòng này vào bảng `legacy_orphan_thuc_hien` với `ly_do = "Ngày không hợp lệ (thángNăm, ngày 31)"` — giữ lại để admin rà soát/quyết định thủ công sau, KHÔNG âm thầm loại bỏ khỏi model và cũng KHÔNG tự suy đoán ngày thay thế — nhất quán với nguyên tắc chung của Pha 7 "không bao giờ bỏ âm thầm" (mục G CLAUDE.md).
 
 4. **Thiết bị đầy đủ (sheet "Thiết bị ")**: 169 thiết bị, chỉ có mã, KHÔNG có tên hiển thị riêng → **`ten_thiet_bi = ma_thiet_bi`** cho mọi thiết bị migrate (không có nguồn nào khác để suy ra tên đẹp hơn; admin có thể tự sửa sau qua `/admin/equipment` đã build ở Pha 3).
    - **34 thiết bị chỉ có trong danh sách đầy đủ, KHÔNG có trong Config** (chưa từng có checksheet) → **theo đúng yêu cầu người dùng**: tạo THIETBI với mọi trường tổ chức = `null`, **`nguoi_phu_trach = null`** (không tự gán, để admin gán sau).
@@ -220,10 +222,14 @@ Người dùng đã chọn **"tách thành từng thiết bị riêng"** khi có
 **Verify:**
 - Chạy thử `node scripts/migrate/run.ts` (hoặc 1 script test riêng gọi `buildMigrationModel` + `printSummary`) với `MIGRATION_XLSX_PATH` trỏ tới file thật, xác nhận:
   - Số THIETBI dự kiến ≈ 169 + số thiết bị con sinh ra từ tách mã ghép − số thiết bị trùng (nếu 1 thiết bị con của mã ghép cũng nằm sẵn trong 169, không tạo trùng).
-  - Số CONGVIEC dự kiến khớp thứ tự độ lớn với 3332 tổ hợp đã đếm thủ công (trừ 105 trùng lặp, cộng thêm phần nhân bản do tách mã ghép).
-  - `orphanThucHien` chỉ chứa dòng của thiết bị `M07601` (đã biết trước, toàn `"N|N"` nên thực ra sẽ = 0 vì bị lọc trước khi match do toàn N|N, không phải orphan thật — XÁC NHẬN LẠI bằng log, nếu có orphan khác ngoài dự kiến thì đọc kỹ lý do trước khi qua Task 2).
+  - Số CONGVIEC dự kiến khớp thứ tự độ lớn với 3331 tổ hợp đã đếm thủ công (trừ 104 nhóm trùng lặp/117 dòng dư, cộng thêm phần nhân bản do tách mã ghép).
+  - `orphanThucHien` liên quan `M07601` = 0 (đã biết trước, toàn `"N|N"` nên bị lọc trước khi match, không phải orphan thật).
   - `warnings` có đúng 1 dòng về `"Dương Văn Hào"` không tra được MSNV.
   - `npx tsc --noEmit` sạch trên toàn bộ `scripts/migrate/*.ts`.
+
+  **[ĐÃ VERIFY — Task 1 hoàn tất]** Số liệu THẬT đo được khi chạy trên file `.xlsx` gốc (khác nhẹ so với ước tính ban đầu ở trên, đã đối chiếu tự nhất quán — xem `.superpowers/sdd/task-1-report.md` để biết chi tiết đối chiếu và 2 phát hiện mới):
+  `NGUOIDUNG=58, THIETBI=173, CHITIET=2696, CONGVIEC=3667, THUC_HIEN=39562 (ket_qua='R': 16), ORPHAN_THUC_HIEN=594 (100% do "ngày 31" không tồn tại ở tháng 06/2026 30 ngày — KHÔNG phải orphan do không khớp CONGVIEC, xem Bối cảnh mục 3 để biết quyết định xử lý), LEGACY_LOGS=2323, WARNINGS=1`.
+  Task 1 cũng phát hiện và fix 1 vấn đề khớp dữ liệu ngoài dự tính ban đầu (whitespace/`\n` khác nhau giữa Config và Data cho cùng 1 điều kiện cơ bản) — xem Bối cảnh mục 2 (đã cập nhật) và báo cáo Task 1 để biết chi tiết.
 
 ## Task 2 — Ghi THIETBI + CHITIET + CONGVIEC vào Postgres (qua `pg`)
 
@@ -282,12 +288,12 @@ Người dùng đã chọn **"tách thành từng thiết bị riêng"** khi có
 
 **Verify:**
 - `npx supabase db reset` (baseline sạch), chạy `node scripts/migrate/run.ts` (dry-run mặc định) trước, xác nhận KHÔNG có gì trong DB thay đổi (`select count(*) from thuc_hien` = 0).
-- Chạy `node scripts/migrate/run.ts --commit` full pipeline, đối chiếu đúng theo "Verify" của CLAUDE.md mục Pha 7:
-  - `select count(*) from congviec` so với số Config task-rows đã dedupe.
-  - `select count(*) from thuc_hien` so với số ô khác `"N|N"` đếm thủ công (10585 dòng × các cột khác N|N).
-  - `select count(*) from bat_thuong` so với số ô `"R"` đếm thủ công.
-  - `select count(*) from legacy_logs_import` = 2324 (số dòng Logs gốc, không lọc).
-  - `select count(*) from legacy_orphan_thuc_hien` — xác nhận đúng như dự kiến từ Task 1 (chỉ liên quan `M07601` nếu có, kỳ vọng 0 như phân tích ở Bối cảnh).
+- Chạy `node scripts/migrate/run.ts --commit` full pipeline, đối chiếu với số liệu THẬT đã đo ở Task 1 (xem hộp "[ĐÃ VERIFY — Task 1 hoàn tất]" ở Task 1 bên trên và `.superpowers/sdd/task-1-report.md` — KHÔNG dùng số ước tính ban đầu ở mục Bối cảnh, dùng số đã đo trực tiếp):
+  - `select count(*) from congviec` = 3667 (khớp `MigrationModel.congViec.length` từ Task 1).
+  - `select count(*) from thuc_hien` = 39562 − (số dòng orphan "ngày 31" bị loại, tức 594, NẾU quyết định không ghi các dòng orphan vào `thuc_hien` — mặc định theo plan là KHÔNG ghi, chỉ ghi vào `legacy_orphan_thuc_hien`) = kỳ vọng con số THUC_HIEN thật ghi vào bảng chính thức phải LOẠI TRỪ 594 dòng orphan này.
+  - `select count(*) from bat_thuong` = 16 (số dòng `ket_qua='R'` đã đếm ở Task 1).
+  - `select count(*) from legacy_logs_import` = 2323 (ĐÃ SỬA từ "2324" — số ban đầu đếm nhầm gồm cả header, xem Bối cảnh mục sheet `Logs`).
+  - `select count(*) from legacy_orphan_thuc_hien` = 594, TOÀN BỘ với `ly_do` liên quan "ngày 31, 06/2026 không hợp lệ" (không phải orphan do không khớp CONGVIEC — nếu xuất hiện lý do khác ngoài "ngày không hợp lệ", đó là dấu hiệu có regression cần điều tra trước khi merge, vì Task 1 đã xác nhận 0 orphan "không tìm thấy CONGVIEC khớp" trên dữ liệu thật sau khi fix vấn đề whitespace).
 - So sánh thủ công lưới chấm công của 5-10 thiết bị/tháng ngẫu nhiên giữa file Excel gốc và UI `/checksheet` thật sau khi migrate (chọn cả thiết bị thường lẫn 1 thiết bị vừa tách từ mã ghép, vd `E06119`) — xác nhận đúng từng ô Plan/Actual.
 - Mở `/admin/bat-thuong`, xác nhận các bất thường lịch sử hiện đúng, `trang_thai="Đã đóng"`, mô tả đúng placeholder đã chốt.
 - Chạy lại `--commit` LẦN 2 toàn bộ, xác nhận mọi bảng KHÔNG tăng số dòng (idempotent thật sự, không chỉ ở equipment).
