@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPlanStats } from "@/lib/checksheet/planStats";
+import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { StatsTable } from "./StatsTable";
 
 // Next.js 16: `searchParams` là 1 Promise, phải await (xem
@@ -14,8 +15,12 @@ export default async function AdminStatsPage({
   // Mặc định tháng hiện tại nếu không có `?thang=`. `thang` ở dạng
   // "YYYY-MM" (giá trị chuẩn của <input type="month">), RPC cần
   // "YYYY-MM-01" (ngày bất kỳ trong tháng).
-  const now = new Date();
-  const defaultThang = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  //
+  // Dùng `vnTodayIso()` (giờ VN, Asia/Ho_Chi_Minh) thay vì `new Date()` server
+  // local time -- server chạy UTC (Vercel/Cloudflare) sẽ tính sai tháng mặc
+  // định trong ~7 giờ đầu ngày 1 hàng tháng theo giờ VN (UTC+7), y hệt lỗi
+  // `vnTodayIso()` đã ghi rõ mình sinh ra để tránh (xem docstring hàm đó).
+  const defaultThang = vnTodayIso().slice(0, 7);
   const thang = params.thang ?? defaultThang;
   const targetMonth = `${thang}-01`;
 
