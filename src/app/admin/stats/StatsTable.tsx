@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PlanStatsRow } from "@/lib/checksheet/planStats";
+import { BatchPrint } from "./BatchPrint";
 
 const STATUS_LIST = ["Đã cập nhật", "Chưa cập nhật"] as const;
 
@@ -55,6 +56,24 @@ export function StatsTable({
       return true;
     });
   }, [initialRows, kip, nhanVien, trangThai]);
+
+  // Hàng đợi in hàng loạt (Task 3): dùng LẠI các bộ lọc Kíp/Nhân viên đang áp
+  // dụng ở bảng, nhưng ÉP BUỘC status="Đã cập nhật" bất kể người dùng đang
+  // chọn Trạng thái gì ở bảng hiển thị -- đúng hành vi hệ cũ (chỉ in thiết bị
+  // đã cập nhật kế hoạch, xem CLAUDE.md/bối cảnh Task 3).
+  const printableDevices = useMemo(() => {
+    const nhanVienLower = nhanVien.trim().toLowerCase();
+    return initialRows
+      .filter((r) => {
+        if (r.status !== "Đã cập nhật") return false;
+        if (kip !== ALL && r.kip !== kip) return false;
+        if (nhanVienLower && !(r.nguoiPhuTrach ?? "").toLowerCase().includes(nhanVienLower)) {
+          return false;
+        }
+        return true;
+      })
+      .map((r) => ({ thietBiId: r.thietBiId, tenThietBi: r.tenThietBi }));
+  }, [initialRows, kip, nhanVien]);
 
   return (
     <div>
@@ -154,6 +173,8 @@ export function StatsTable({
           </tbody>
         </table>
       </div>
+
+      <BatchPrint devices={printableDevices} monthValue={month} />
     </div>
   );
 }
