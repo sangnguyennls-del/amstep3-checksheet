@@ -18,6 +18,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import type { Client } from "pg";
 import { buildMigrationModel } from "./buildModel.ts";
 import { getPgClient } from "./db.ts";
 import { migrateChiTietCongViec, migrateThietBi } from "./migrateEquipment.ts";
@@ -164,7 +165,7 @@ function applyAdminMDowngradeOverride(model: MigrationModel): void {
   model.nguoiDung[idx] = { ...user, vaiTro: "admin" };
 }
 
-async function printFinalReconciliation(client: import("pg").Client, model: MigrationModel) {
+async function printFinalReconciliation(client: Client, model: MigrationModel) {
   const soLuongR = model.thucHien.filter((t) => t.ketQua === "R").length;
 
   // Chạy TUẦN TỰ (không Promise.all) — `pg.Client` chỉ dùng 1 kết nối duy
@@ -273,6 +274,14 @@ async function main() {
   model.thucHien = dedupedThucHien;
   model.orphanThucHien = [...model.orphanThucHien, ...conflictOrphans];
 
+  // Ghi đè thủ công có chủ đích cho MSNV 001310 (xem hàm ở trên) — áp dụng
+  // TRƯỚC printSummary/kiểm tra dry-run (không chỉ trước migrateNguoiDung) để
+  // cảnh báo lớn này luôn hiện ra ngay cả khi chạy dry-run, giúp người vận
+  // hành thấy trước khi quyết định --commit thật. Hàm này chỉ mutate model
+  // trong bộ nhớ + log ra console, không có side effect nào khác nên an toàn
+  // gọi ở cả 2 chế độ.
+  applyAdminMDowngradeOverride(model);
+
   printSummary(model);
 
   if (!commit) {
@@ -298,28 +307,24 @@ async function main() {
       { commit },
     );
 
-    // 2. Ghi đè thủ công có chủ đích cho MSNV 001310 (xem hàm ở trên) —
-    //    PHẢI thực hiện TRƯỚC khi gọi migrateNguoiDung.
-    applyAdminMDowngradeOverride(model);
-
-    // 3. NGUOIDUNG (Supabase Auth + profile) + anh_url.
+    // 2. NGUOIDUNG (Supabase Auth + profile) + anh_url.
     await migrateNguoiDung(supabaseAdmin, pgClient, model.nguoiDung, env.tempPassword, { commit });
     await migrateAnhUrl(pgClient, readImagesRows(wb), thietBiIdMap, { commit });
 
-    // 4. Backfill nguoi_phu_trach: gọi lại migrateThietBi SAU migrateNguoiDung
+    // 3. Backfill nguoi_phu_trach: gọi lại migrateThietBi SAU migrateNguoiDung
     //    (xem carry-forward Task 2 -> Task 4 trong plan/JSDoc migrateEquipment.ts).
     //    Đây thuần tuý là 1 lượt backfill — không tạo mới THIETBI/CHITIET/CONGVIEC
     //    nào (tất cả đã tồn tại từ bước 1).
     await migrateThietBi(pgClient, model.thietBi, { commit });
 
-    // 5. THUC_HIEN (+ BAT_THUONG cho ket_qua='R').
+    // 4. THUC_HIEN (+ BAT_THUONG cho ket_qua='R').
     await migrateThucHienBatch(pgClient, model.thucHien, congViecIdMap, { commit });
 
-    // 6. Logs cũ + orphan.
+    // 5. Logs cũ + orphan.
     await migrateLegacyLogs(pgClient, model.logs, { commit });
     await migrateOrphanThucHien(pgClient, model.orphanThucHien, { commit });
 
-    // 7. Báo cáo đối chiếu cuối cùng.
+    // 6. Báo cáo đối chiếu cuối cùng.
     await printFinalReconciliation(pgClient, model);
   } finally {
     await pgClient.end();

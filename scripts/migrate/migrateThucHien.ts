@@ -88,6 +88,16 @@ export function dedupeThucHien(thucHienList: ThucHienRecord[]): DedupeThucHienRe
     }
 
     const first = rows[0];
+    // Cố ý so cả `nguoiThucHien` ở đây, không chỉ `keHoach`/`ketQua` — đã kiểm
+    // chứng thực nghiệm trên dữ liệu thật (03/07/2026, script chẩn đoán tạm
+    // thời tái dùng đúng logic gom nhóm này): trong 132 nhóm mâu thuẫn, 0
+    // nhóm chỉ khác `nguoiThucHien` (mọi nhóm mâu thuẫn đều lệch `keHoach`
+    // hoặc `ketQua` thật sự) — nên việc gộp `nguoiThucHien` vào điều kiện
+    // "giống hệt" này KHÔNG loại oan nhóm nào khỏi `thuc_hien` trên tập dữ
+    // liệu hiện có. Đây là quyết định có chủ đích đã kiểm tra, không phải bỏ
+    // sót — nếu dữ liệu nguồn thay đổi trong tương lai và xuất hiện nhóm chỉ
+    // khác người thực hiện, cân nhắc tách riêng nhánh "an toàn gộp" cho
+    // trường hợp đó thay vì coi là mâu thuẫn.
     const allSame = rows.every(
       (r) => r.keHoach === first.keHoach && r.ketQua === first.ketQua && r.nguoiThucHien === first.nguoiThucHien,
     );
@@ -318,6 +328,11 @@ export async function migrateThucHienBatch(
   );
 
   // ---- Xử lý các dòng 'R' — mỗi dòng 1 transaction thật kèm BAT_THUONG. ----
+  // Cố ý mở 1 transaction/dòng thay vì gộp nhiều dòng/transaction (khác gợi ý
+  // "batch" trong brief): dữ liệu thật chỉ có 16 dòng ket_qua='R' (xem báo cáo
+  // Task 4), nên chi phí round-trip không đáng kể — gộp nhiều dòng/transaction
+  // sẽ chỉ thêm độ phức tạp code (quản lý savepoint/rollback từng phần) mà
+  // không mang lại lợi ích thực tế ở quy mô này. Không phải bỏ sót.
   let rDaCo = 0;
   let rTaoMoi = 0;
   let batThuongTaoMoi = 0;
