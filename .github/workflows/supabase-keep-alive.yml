@@ -2,8 +2,14 @@
 # (pause sau 7 ngày không có hoạt động DB thật). Xem
 # docs/plans/pha8-audit-cron.md mục "Bối cảnh" + "Task 2".
 #
-# Lịch: mỗi 3 ngày (an toàn dưới ngưỡng pause 7 ngày) + cho phép chạy thủ công
-# qua workflow_dispatch.
+# Lịch: `*/3` trên field ngày-trong-tháng KHÔNG có nghĩa "mỗi 3 ngày" theo kiểu
+# rolling -- nó reset về ngày 1 mỗi tháng (vd chạy ngày 1,4,...,28,31 rồi lại
+# ngày 1 tháng sau). Đã tính kỹ: vì mọi tháng đều bắt đầu lại từ ngày 1 và lần
+# chạy cuối trong tháng luôn cách cuối tháng tối đa 2 ngày, khoảng cách xa nhất
+# giữa 2 lần chạy liên tiếp (kể cả qua ranh giới tháng bất kỳ, kể cả năm nhuận)
+# không bao giờ vượt quá 3 ngày -- vẫn an toàn dưới ngưỡng pause 7 ngày, đủ dư
+# để chịu được 1 lần chạy bị lỗi/trễ liên tiếp. Cho phép chạy thủ công qua
+# workflow_dispatch.
 name: Supabase keep-alive ping
 
 on:

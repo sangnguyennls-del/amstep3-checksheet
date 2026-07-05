@@ -113,12 +113,13 @@ async function main() {
     const lines = decompressed.split("\n").filter((l) => l.length > 0);
 
     if (lines.length !== rows.length) {
-      console.error(
-        `LỖI: số dòng đọc lại từ file (${lines.length}) KHÔNG khớp số dòng query được (${rows.length}). ` +
+      // throw (không process.exit) để `finally { client.end() }` bên dưới
+      // vẫn chạy, đóng kết nối đúng cách trước khi main().catch() thoát lỗi.
+      throw new Error(
+        `số dòng đọc lại từ file (${lines.length}) KHÔNG khớp số dòng query được (${rows.length}). ` +
           "DỪNG NGAY, KHÔNG xoá gì khỏi audit_log. Kiểm tra lại file tại " +
           filePath,
       );
-      process.exit(1);
     }
 
     console.log(`Đã export ${lines.length} dòng ra file: ${filePath} (${compressed.length} bytes nén).`);
