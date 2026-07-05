@@ -3,6 +3,7 @@
 #
 # Lịch: hàng tuần (Chủ nhật 02:00 UTC) + cho phép chạy thủ công qua
 # workflow_dispatch (vd để test hoặc export ngay khi cần, không chờ tới lịch).
+# (nudge commit để GitHub Actions đăng ký workflow lần đầu)
 name: Audit log export + purge
 
 on:
