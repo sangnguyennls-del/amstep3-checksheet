@@ -10,6 +10,7 @@
 # không bao giờ vượt quá 3 ngày -- vẫn an toàn dưới ngưỡng pause 7 ngày, đủ dư
 # để chịu được 1 lần chạy bị lỗi/trễ liên tiếp. Cho phép chạy thủ công qua
 # workflow_dispatch.
+# (nudge commit để GitHub Actions đăng ký workflow lần đầu)
 name: Supabase keep-alive ping
 
 on:
