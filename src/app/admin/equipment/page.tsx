@@ -7,11 +7,12 @@ export default async function AdminEquipmentPage() {
     .from("thietbi")
     .select("id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nguoi_phu_trach")
     .order("ma_thiet_bi");
+  const { data: users } = await supabase.from("nguoidung").select("msnv, ho_ten").order("ho_ten");
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">Quản lý thiết bị</h1>
-      <EquipmentList items={(items ?? []) as ThietBiRow[]} />
+      <h1 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Quản lý thiết bị</h1>
+      <EquipmentList items={(items ?? []) as ThietBiRow[]} users={users ?? []} />
     </div>
   );
 }

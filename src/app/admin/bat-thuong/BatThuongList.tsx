@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BatThuongListItem } from "@/lib/checksheet/batThuongList";
 import { updateBatThuongStatus, type UpdateBatThuongState } from "@/app/actions/batThuong";
+import { ui } from "@/lib/ui";
 
 // Định nghĩa state ban đầu Ở ĐÂY (client), KHÔNG import từ file "use server"
 // -- Next.js 16 chỉ cho phép 1 file "use server" export các hàm async,
@@ -65,7 +66,7 @@ function RowStatusForm({ item }: { item: BatThuongListItem }) {
           name="trangThai"
           value={trangThai}
           onChange={(e) => setTrangThai(e.target.value as (typeof TRANG_THAI_LIST)[number])}
-          className="rounded-md border border-gray-300 px-1.5 py-1 text-xs"
+          className={`${ui.input} px-1.5! py-1! text-xs!`}
         >
           {TRANG_THAI_LIST.map((t) => (
             <option key={t} value={t}>
@@ -79,18 +80,18 @@ function RowStatusForm({ item }: { item: BatThuongListItem }) {
           value={ngayKhacPhuc}
           onChange={(e) => setNgayKhacPhuc(e.target.value)}
           disabled={trangThai !== "Đã đóng"}
-          className="rounded-md border border-gray-300 px-1.5 py-1 text-xs disabled:bg-gray-100 disabled:text-gray-400"
+          className={`${ui.input} px-1.5! py-1! text-xs!`}
         />
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          className={`${ui.buttonPrimary} px-2! py-1! text-xs!`}
         >
           {isPending ? "Đang lưu..." : "Lưu"}
         </button>
       </div>
       {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="text-xs text-green-600">Đã lưu.</p> : null}
+      {state.success ? <p className="text-xs text-emerald-600">Đã lưu.</p> : null}
     </form>
   );
 }
@@ -125,7 +126,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
         {TRANG_THAI_LIST.map((trangThai) => (
           <label
             key={trangThai}
-            className="flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm transition-colors hover:bg-gray-50 has-[:checked]:border-blue-300 has-[:checked]:bg-blue-50"
           >
             <input
               type="checkbox"
@@ -135,59 +136,55 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
             {trangThai}
           </label>
         ))}
-        <button
-          type="button"
-          onClick={showAll}
-          className="rounded-md border px-2.5 py-1.5 text-sm hover:bg-gray-50"
-        >
+        <button type="button" onClick={showAll} className={`${ui.buttonSecondary} px-2.5! py-1.5!`}>
           Hiện tất cả
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-white">
+      <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b bg-gray-50 text-left text-gray-600">
+          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
-              <th className="px-3 py-2">Ngày</th>
-              <th className="px-3 py-2">Thiết bị</th>
-              <th className="px-3 py-2">Nội dung</th>
-              <th className="px-3 py-2">Loại</th>
-              <th className="px-3 py-2">Mô tả bất thường</th>
-              <th className="px-3 py-2">Ngày phát hiện</th>
-              <th className="px-3 py-2">Ngày khắc phục</th>
-              <th className="px-3 py-2">Trạng thái</th>
-              <th className="px-3 py-2">Người ghi</th>
-              <th className="px-3 py-2">Ảnh</th>
-              <th className="px-3 py-2">Đổi trạng thái</th>
+              <th className="px-3 py-2.5">Ngày</th>
+              <th className="px-3 py-2.5">Thiết bị</th>
+              <th className="px-3 py-2.5">Nội dung</th>
+              <th className="px-3 py-2.5">Loại</th>
+              <th className="px-3 py-2.5">Mô tả bất thường</th>
+              <th className="px-3 py-2.5">Ngày phát hiện</th>
+              <th className="px-3 py-2.5">Ngày khắc phục</th>
+              <th className="px-3 py-2.5">Trạng thái</th>
+              <th className="px-3 py-2.5">Người ghi</th>
+              <th className="px-3 py-2.5">Ảnh</th>
+              <th className="px-3 py-2.5">Đổi trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((item) => (
-              <tr key={item.id} className="border-b last:border-0 align-top">
-                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.ngay)}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+              <tr key={item.id} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
+                <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(item.ngay)}</td>
+                <td className="px-3 py-2.5 font-medium whitespace-nowrap text-gray-900">
                   {item.maThietBi} — {item.tenThietBi}
                 </td>
-                <td className="px-3 py-2">{item.tenChiTiet}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.loaiHoatDong}</td>
-                <td className="px-3 py-2">{item.moTa}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.ngayPhatHien)}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.ngayKhacPhuc)}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2.5">{item.tenChiTiet}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{item.loaiHoatDong}</td>
+                <td className="px-3 py-2.5">{item.moTa}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(item.ngayPhatHien)}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(item.ngayKhacPhuc)}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRANG_THAI_BADGE[item.trangThai]}`}
                   >
                     {item.trangThai}
                   </span>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{item.nguoiGhi ?? "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2.5 whitespace-nowrap">{item.nguoiGhi ?? "—"}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
                   {item.anhUrl ? (
                     <a
                       href={item.anhUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 transition-colors hover:text-blue-700 hover:underline"
                     >
                       Xem ảnh
                     </a>
@@ -195,14 +192,14 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
                     "—"
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <RowStatusForm item={item} />
                 </td>
               </tr>
             ))}
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={11} className="px-3 py-8 text-center text-gray-400">
                   Không có bất thường nào phù hợp bộ lọc.
                 </td>
               </tr>

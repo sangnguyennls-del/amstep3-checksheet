@@ -8,6 +8,7 @@ import { gridReducer, initialGridState } from "@/lib/checksheet/gridReducer";
 import { CHECKSHEET_SAVED_EVENT } from "@/lib/checksheet/notifications";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
+import { ui } from "@/lib/ui";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
 import { BatThuongModal } from "./BatThuongModal";
 import { EquipmentImageModal } from "./EquipmentImageModal";
@@ -71,8 +72,7 @@ export function monthRange(monthValue: string): { thangDau: string; thangCuoi: s
   };
 }
 
-const selectClass =
-  "rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400";
+const selectClass = ui.input;
 
 export function ChecksheetApp({
   currentUser,
@@ -468,9 +468,9 @@ export function ChecksheetApp({
         {currentUser.msnv ? ` (${currentUser.msnv})` : ""}
       </p>
 
-      <div className="no-print mb-4 flex flex-wrap items-end gap-3 rounded-md border bg-white p-4">
+      <div className={`no-print mb-4 flex flex-wrap items-end gap-3 ${ui.card}`}>
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Xưởng</label>
+          <label className={ui.label}>Xưởng</label>
           <select
             className={selectClass}
             value={xuong}
@@ -486,7 +486,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Kíp</label>
+          <label className={ui.label}>Kíp</label>
           <select
             className={selectClass}
             value={kip}
@@ -502,7 +502,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Nhân viên phụ trách</label>
+          <label className={ui.label}>Nhân viên phụ trách</label>
           <select
             className={selectClass}
             value={nhanVienMsnv}
@@ -521,7 +521,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Thiết bị</label>
+          <label className={ui.label}>Thiết bị</label>
           <select
             className={selectClass}
             value={thietBiId}
@@ -537,7 +537,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">Tháng</label>
+          <label className={ui.label}>Tháng</label>
           <input
             type="month"
             className={selectClass}
@@ -550,21 +550,21 @@ export function ChecksheetApp({
           type="button"
           disabled={!canLoad || loading}
           onClick={handleLoad}
-          className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          className={ui.buttonPrimary}
         >
           {loading ? "Đang tải..." : "Xem checksheet"}
         </button>
       </div>
 
       {selectedThietBi ? (
-        <p className="no-print mb-3 flex items-center gap-3 text-sm text-gray-500">
+        <p className="no-print mb-3 flex flex-wrap items-center gap-3 text-sm text-gray-600">
           <span>
-            Thiết bị: <span className="font-medium">{selectedThietBi.tenThietBi}</span> — Xưởng{" "}
+            Thiết bị: <span className="font-medium text-gray-900">{selectedThietBi.tenThietBi}</span> — Xưởng{" "}
             {selectedThietBi.xuong || "-"} / Kíp {selectedThietBi.kip || "-"}
           </span>
           <button
             type="button"
-            className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+            className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}
             onClick={() => setImageModalOpen(true)}
           >
             Xem ảnh thiết bị
@@ -572,11 +572,11 @@ export function ChecksheetApp({
         </p>
       ) : null}
 
-      {loadError ? <p className="no-print mb-3 text-sm text-red-600">{loadError}</p> : null}
-      {saveError ? <p className="no-print mb-3 text-sm text-red-600">{saveError}</p> : null}
+      {loadError ? <p className={`no-print mb-3 ${ui.errorText}`}>{loadError}</p> : null}
+      {saveError ? <p className={`no-print mb-3 ${ui.errorText}`}>{saveError}</p> : null}
 
       {rejectedCells.length > 0 ? (
-        <div className="no-print mb-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="no-print mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="mb-1 font-medium">
             {rejectedCells.length} ô không được lưu (server từ chối hoặc cần xử lý riêng):
           </p>
@@ -599,24 +599,20 @@ export function ChecksheetApp({
       {showTable ? (
         <>
           <div className="no-print mb-3 flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+            <p className={`text-sm ${hasDirty ? "font-medium text-amber-700" : "text-gray-500"}`}>
               {hasDirty
                 ? `${gridState.dirty.size} ô đã đổi, chưa lưu.`
                 : "Không có thay đổi nào chưa lưu."}
             </p>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50"
-              >
+              <button type="button" onClick={() => window.print()} className={ui.buttonSecondary}>
                 In
               </button>
               <button
                 type="button"
                 disabled={!hasDirty || saving}
                 onClick={handleSave}
-                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
+                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {saving ? "Đang lưu..." : "Lưu"}
               </button>
@@ -642,7 +638,7 @@ export function ChecksheetApp({
           </div>
         </>
       ) : (
-        <p className="no-print rounded-md border bg-white p-4 text-center text-sm text-gray-400">
+        <p className={`no-print p-8 text-center text-sm text-gray-500 ${ui.card}`}>
           Chọn Thiết bị và Tháng rồi bấm &quot;Xem checksheet&quot; để tải dữ liệu.
         </p>
       )}

@@ -44,9 +44,18 @@ export default async function AdminEquipmentDetailPage({
     congviec: (congViecRows ?? []).filter((cv) => cv.chitiet_id === ct.id),
   }));
 
+  const { data: nguoiDungRows } = await supabase
+    .from("nguoidung")
+    .select("msnv, ho_ten")
+    .order("ho_ten");
+
   return (
     <div>
-      <EquipmentDetail thietBi={thietBi as ThietBiDetail} chiTietList={chiTietList} />
+      <EquipmentDetail
+        thietBi={thietBi as ThietBiDetail}
+        chiTietList={chiTietList}
+        users={nguoiDungRows ?? []}
+      />
     </div>
   );
 }

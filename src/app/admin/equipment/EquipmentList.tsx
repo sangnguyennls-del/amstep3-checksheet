@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { createThietBi, deleteThietBi, type EquipmentActionState } from "@/app/actions/equipment";
+import { ui } from "@/lib/ui";
 
 export type ThietBiRow = {
   id: string;
@@ -13,90 +14,77 @@ export type ThietBiRow = {
   nguoi_phu_trach: string | null;
 };
 
+export type NguoiDungOption = { msnv: string; ho_ten: string };
+
 const initialState: EquipmentActionState = { error: null };
 
-function CreateThietBiForm() {
+function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
   const [state, formAction, isPending] = useActionState(createThietBi, initialState);
   const [open, setOpen] = useState(false);
 
   return (
     <div className="mb-6">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
+      <button type="button" onClick={() => setOpen((v) => !v)} className={ui.buttonPrimary}>
         {open ? "Đóng" : "+ Thêm thiết bị"}
       </button>
 
       {open ? (
-        <form
-          action={formAction}
-          className="mt-3 grid grid-cols-1 gap-3 rounded-md border bg-white p-4 sm:grid-cols-2 md:grid-cols-3"
-        >
+        <form action={formAction} className={`mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 ${ui.card}`}>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Mã thiết bị</label>
-            <input
-              name="maThietBi"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Mã thiết bị</label>
+            <input name="maThietBi" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Tên thiết bị</label>
-            <input
-              name="tenThietBi"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Tên thiết bị</label>
+            <input name="tenThietBi" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Cụm</label>
-            <input name="cum" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Cụm</label>
+            <input name="cum" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Khu vực</label>
-            <input name="khuVuc" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Khu vực</label>
+            <input name="khuVuc" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Xưởng</label>
-            <input name="xuong" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Xưởng</label>
+            <input name="xuong" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Kíp</label>
-            <input name="kip" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Kíp</label>
+            <input name="kip" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Lãnh đạo</label>
-            <input name="lanhDao" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Lãnh đạo</label>
+            <input name="lanhDao" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Trưởng ca</label>
-            <input name="truongCa" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Trưởng ca</label>
+            <input name="truongCa" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">MSNV người phụ trách</label>
-            <input
-              name="nguoiPhuTrach"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Người phụ trách</label>
+            <select name="nguoiPhuTrach" defaultValue="" className={ui.input}>
+              <option value="">-- Chưa gán --</option>
+              {users.map((u) => (
+                <option key={u.msnv} value={u.msnv}>
+                  {u.ho_ten} ({u.msnv})
+                </option>
+              ))}
+            </select>
           </div>
 
           {state.error ? (
-            <p role="alert" className="col-span-full text-sm text-red-600">
+            <p role="alert" className={`col-span-full ${ui.errorText}`}>
               {state.error}
             </p>
           ) : null}
           {state.success ? (
-            <p className="col-span-full text-sm text-green-600">Tạo thiết bị thành công.</p>
+            <p className={`col-span-full ${ui.successText}`}>Tạo thiết bị thành công.</p>
           ) : null}
 
           <div className="col-span-full">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
               {isPending ? "Đang tạo..." : "Tạo thiết bị"}
             </button>
           </div>
@@ -106,9 +94,10 @@ function CreateThietBiForm() {
   );
 }
 
-export function EquipmentList({ items }: { items: ThietBiRow[] }) {
+export function EquipmentList({ items, users }: { items: ThietBiRow[]; users: NguoiDungOption[] }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const nameByMsnv = new Map(users.map((u) => [u.msnv, u.ho_ten]));
 
   function handleDelete(item: ThietBiRow) {
     if (
@@ -129,43 +118,44 @@ export function EquipmentList({ items }: { items: ThietBiRow[] }) {
 
   return (
     <div>
-      <CreateThietBiForm />
+      <CreateThietBiForm users={users} />
 
-      {deleteError ? <p className="mb-3 text-sm text-red-600">{deleteError}</p> : null}
+      {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
-      <div className="overflow-x-auto rounded-md border bg-white">
+      <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b bg-gray-50 text-left text-gray-600">
+          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
-              <th className="px-3 py-2">Mã</th>
-              <th className="px-3 py-2">Tên</th>
-              <th className="px-3 py-2">Xưởng</th>
-              <th className="px-3 py-2">Kíp</th>
-              <th className="px-3 py-2">Người phụ trách</th>
-              <th className="px-3 py-2">Hành động</th>
+              <th className="px-4 py-2.5">Mã</th>
+              <th className="px-4 py-2.5">Tên</th>
+              <th className="px-4 py-2.5">Xưởng</th>
+              <th className="px-4 py-2.5">Kíp</th>
+              <th className="px-4 py-2.5">Người phụ trách</th>
+              <th className="px-4 py-2.5">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="px-3 py-2">{item.ma_thiet_bi}</td>
-                <td className="px-3 py-2">{item.ten_thiet_bi}</td>
-                <td className="px-3 py-2">{item.xuong ?? ""}</td>
-                <td className="px-3 py-2">{item.kip ?? ""}</td>
-                <td className="px-3 py-2">{item.nguoi_phu_trach ?? ""}</td>
-                <td className="px-3 py-2">
+              <tr key={item.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+                <td className="px-4 py-2.5 font-medium text-gray-900">{item.ma_thiet_bi}</td>
+                <td className="px-4 py-2.5">{item.ten_thiet_bi}</td>
+                <td className="px-4 py-2.5 text-gray-600">{item.xuong ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">{item.kip ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">
+                  {item.nguoi_phu_trach
+                    ? `${nameByMsnv.get(item.nguoi_phu_trach) ?? "?"} (${item.nguoi_phu_trach})`
+                    : "— Chưa gán —"}
+                </td>
+                <td className="px-4 py-2.5">
                   <div className="flex gap-2">
-                    <Link
-                      href={`/admin/equipment/${item.id}`}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                    >
+                    <Link href={`/admin/equipment/${item.id}`} className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}>
                       Chi tiết
                     </Link>
                     <button
                       type="button"
                       disabled={isPending}
                       onClick={() => handleDelete(item)}
-                      className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
+                      className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Xoá
                     </button>
@@ -175,7 +165,7 @@ export function EquipmentList({ items }: { items: ThietBiRow[] }) {
             ))}
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   Chưa có thiết bị nào.
                 </td>
               </tr>

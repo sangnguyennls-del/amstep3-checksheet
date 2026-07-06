@@ -32,7 +32,9 @@ export default async function AdminStatsPage({
       {/* no-print: xem comment trong src/app/admin/layout.tsx -- print.css chỉ
           ẩn phần tử có class `no-print` lúc in, không tự ẩn "mọi thứ ngoài
           .print-area". Tiêu đề trang phải tự đánh dấu, không tự động ẩn. */}
-      <h1 className="no-print mb-4 text-lg font-semibold">Thống kê hoàn thành Plan</h1>
+      <h1 className="no-print mb-4 text-lg font-semibold tracking-tight text-gray-900">
+        Thống kê hoàn thành Plan
+      </h1>
       <StatsTable initialRows={rows} initialMonth={thang} />
     </div>
   );

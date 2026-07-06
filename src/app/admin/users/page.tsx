@@ -13,7 +13,7 @@ export default async function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">Quản lý người dùng</h1>
+      <h1 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Quản lý người dùng</h1>
       <UsersTable users={(users ?? []) as UserRow[]} currentUserVaiTro={vaiTro} />
     </div>
   );

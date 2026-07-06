@@ -13,6 +13,7 @@ import { monthRange } from "@/app/checksheet/ChecksheetApp";
 import { ChecksheetTable } from "@/app/checksheet/ChecksheetTable";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import type { CongViecRow, ThucHienMap } from "@/lib/checksheet/types";
+import { ui } from "@/lib/ui";
 import "@/app/checksheet/print.css";
 
 type PrintDevice = { thietBiId: string; tenThietBi: string };
@@ -160,7 +161,7 @@ export function BatchPrint({
           type="button"
           disabled={devices.length === 0 || running}
           onClick={handleClick}
-          className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
+          className={ui.buttonSecondary}
         >
           In danh sách đã lọc
         </button>
@@ -172,10 +173,10 @@ export function BatchPrint({
         ) : null}
 
         {!running && doneCount !== null ? (
-          <p className="text-sm text-green-700">Đã in xong {doneCount} thiết bị.</p>
+          <p className={ui.successText}>Đã in xong {doneCount} thiết bị.</p>
         ) : null}
 
-        {errorMsg ? <p className="text-sm text-red-600">{errorMsg}</p> : null}
+        {errorMsg ? <p className={ui.errorText}>{errorMsg}</p> : null}
       </div>
 
       {/* Giữ print-area luôn có mặt trong DOM khi đang chạy hàng đợi (không

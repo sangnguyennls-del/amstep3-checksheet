@@ -22,7 +22,7 @@ export default async function AdminBatThuongPage({
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">Quản lý bất thường</h1>
+      <h1 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Quản lý bất thường</h1>
       <BatThuongList initialItems={items} />
     </div>
   );

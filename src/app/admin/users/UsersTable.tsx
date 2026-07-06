@@ -8,6 +8,7 @@ import {
   resetUserPassword,
   type UserActionState,
 } from "@/app/actions/users";
+import { ui } from "@/lib/ui";
 
 export type UserRow = {
   id: string;
@@ -36,11 +37,7 @@ function RoleSelect({
   currentUserVaiTro: "admin" | "adminm";
 }) {
   return (
-    <select
-      name={name}
-      defaultValue={defaultValue}
-      className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-    >
+    <select name={name} defaultValue={defaultValue} className={ui.input}>
       <option value="user">User</option>
       <option value="admin">Admin</option>
       {currentUserVaiTro === "adminm" ? <option value="adminm">AdminM</option> : null}
@@ -54,80 +51,48 @@ function CreateUserForm({ currentUserVaiTro }: { currentUserVaiTro: "admin" | "a
 
   return (
     <div className="mb-6">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
+      <button type="button" onClick={() => setOpen((v) => !v)} className={ui.buttonPrimary}>
         {open ? "Đóng" : "+ Thêm người dùng"}
       </button>
 
       {open ? (
-        <form
-          action={formAction}
-          className="mt-3 grid grid-cols-1 gap-3 rounded-md border bg-white p-4 sm:grid-cols-2 md:grid-cols-3"
-        >
+        <form action={formAction} className={`mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 ${ui.card}`}>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Tài khoản</label>
-            <input
-              name="username"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Tài khoản</label>
+            <input name="username" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Mật khẩu</label>
-            <input
-              name="password"
-              type="password"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Mật khẩu</label>
+            <input name="password" type="password" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">MSNV</label>
-            <input
-              name="msnv"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>MSNV</label>
+            <input name="msnv" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Họ tên</label>
-            <input
-              name="hoTen"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Họ tên</label>
+            <input name="hoTen" required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Đơn vị</label>
-            <input name="donVi" className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            <label className={ui.label}>Đơn vị</label>
+            <input name="donVi" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Vai trò</label>
-            <RoleSelect
-              name="vaiTro"
-              defaultValue="user"
-              currentUserVaiTro={currentUserVaiTro}
-            />
+            <label className={ui.label}>Vai trò</label>
+            <RoleSelect name="vaiTro" defaultValue="user" currentUserVaiTro={currentUserVaiTro} />
           </div>
 
           {state.error ? (
-            <p role="alert" className="col-span-full text-sm text-red-600">
+            <p role="alert" className={`col-span-full ${ui.errorText}`}>
               {state.error}
             </p>
           ) : null}
           {state.success ? (
-            <p className="col-span-full text-sm text-green-600">Tạo người dùng thành công.</p>
+            <p className={`col-span-full ${ui.successText}`}>Tạo người dùng thành công.</p>
           ) : null}
 
           <div className="col-span-full">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
               {isPending ? "Đang tạo..." : "Tạo người dùng"}
             </button>
           </div>
@@ -149,30 +114,21 @@ function EditUserDialog({
   const [state, formAction, isPending] = useActionState(updateUser, initialState);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-md rounded-md border bg-white p-4 shadow-lg">
-        <h2 className="mb-3 text-base font-semibold">Sửa người dùng {user.msnv}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Sửa người dùng {user.msnv}</h2>
         <form action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Họ tên</label>
-            <input
-              name="hoTen"
-              defaultValue={user.ho_ten}
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Họ tên</label>
+            <input name="hoTen" defaultValue={user.ho_ten} required className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Đơn vị</label>
-            <input
-              name="donVi"
-              defaultValue={user.don_vi ?? ""}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Đơn vị</label>
+            <input name="donVi" defaultValue={user.don_vi ?? ""} className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Vai trò</label>
+            <label className={ui.label}>Vai trò</label>
             <RoleSelect
               name="vaiTro"
               defaultValue={user.vai_tro ?? "user"}
@@ -181,25 +137,17 @@ function EditUserDialog({
           </div>
 
           {state.error ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className={ui.errorText}>
               {state.error}
             </p>
           ) : null}
-          {state.success ? <p className="text-sm text-green-600">Đã lưu.</p> : null}
+          {state.success ? <p className={ui.successText}>Đã lưu.</p> : null}
 
           <div className="mt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
-            >
+            <button type="button" onClick={onClose} className={ui.buttonSecondary}>
               Đóng
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
               {isPending ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
@@ -213,43 +161,30 @@ function ResetPasswordDialog({ user, onClose }: { user: UserRow; onClose: () => 
   const [state, formAction, isPending] = useActionState(resetUserPassword, initialState);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-sm rounded-md border bg-white p-4 shadow-lg">
-        <h2 className="mb-3 text-base font-semibold">Đặt lại mật khẩu cho {user.msnv}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]">
+      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
+          Đặt lại mật khẩu cho {user.msnv}
+        </h2>
         <form action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={user.id} />
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Mật khẩu mới</label>
-            <input
-              name="newPassword"
-              type="password"
-              required
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <label className={ui.label}>Mật khẩu mới</label>
+            <input name="newPassword" type="password" required className={ui.input} />
           </div>
 
           {state.error ? (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className={ui.errorText}>
               {state.error}
             </p>
           ) : null}
-          {state.success ? (
-            <p className="text-sm text-green-600">Đã đặt lại mật khẩu.</p>
-          ) : null}
+          {state.success ? <p className={ui.successText}>Đã đặt lại mật khẩu.</p> : null}
 
           <div className="mt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
-            >
+            <button type="button" onClick={onClose} className={ui.buttonSecondary}>
               Đóng
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
               {isPending ? "Đang lưu..." : "Đặt lại"}
             </button>
           </div>
@@ -288,39 +223,51 @@ export function UsersTable({
     <div>
       <CreateUserForm currentUserVaiTro={currentUserVaiTro} />
 
-      {deleteError ? <p className="mb-3 text-sm text-red-600">{deleteError}</p> : null}
+      {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
-      <div className="overflow-x-auto rounded-md border bg-white">
+      <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b bg-gray-50 text-left text-gray-600">
+          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
-              <th className="px-3 py-2">MSNV</th>
-              <th className="px-3 py-2">Họ tên</th>
-              <th className="px-3 py-2">Đơn vị</th>
-              <th className="px-3 py-2">Vai trò</th>
-              <th className="px-3 py-2">Hành động</th>
+              <th className="px-4 py-2.5">MSNV</th>
+              <th className="px-4 py-2.5">Họ tên</th>
+              <th className="px-4 py-2.5">Đơn vị</th>
+              <th className="px-4 py-2.5">Vai trò</th>
+              <th className="px-4 py-2.5">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b last:border-0">
-                <td className="px-3 py-2">{u.msnv}</td>
-                <td className="px-3 py-2">{u.ho_ten}</td>
-                <td className="px-3 py-2">{u.don_vi ?? ""}</td>
-                <td className="px-3 py-2">{ROLE_LABEL[u.vai_tro ?? "user"] ?? u.vai_tro}</td>
-                <td className="px-3 py-2">
+              <tr key={u.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+                <td className="px-4 py-2.5 font-medium text-gray-900">{u.msnv}</td>
+                <td className="px-4 py-2.5">{u.ho_ten}</td>
+                <td className="px-4 py-2.5 text-gray-600">{u.don_vi ?? ""}</td>
+                <td className="px-4 py-2.5">
+                  <span
+                    className={
+                      u.vai_tro === "adminm"
+                        ? "rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
+                        : u.vai_tro === "admin"
+                          ? "rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                          : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+                    }
+                  >
+                    {ROLE_LABEL[u.vai_tro ?? "user"] ?? u.vai_tro}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5">
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setEditingUser(u)}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+                      className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}
                     >
                       Sửa
                     </button>
                     <button
                       type="button"
                       onClick={() => setResettingUser(u)}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+                      className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}
                     >
                       Đặt lại mật khẩu
                     </button>
@@ -328,7 +275,7 @@ export function UsersTable({
                       type="button"
                       disabled={isPending}
                       onClick={() => handleDelete(u)}
-                      className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
+                      className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Xoá
                     </button>
@@ -338,7 +285,7 @@ export function UsersTable({
             ))}
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   Chưa có người dùng nào.
                 </td>
               </tr>

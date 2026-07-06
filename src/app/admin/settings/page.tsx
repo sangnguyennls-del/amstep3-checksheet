@@ -7,7 +7,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold">Cài đặt hệ thống</h1>
+      <h1 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">Cài đặt hệ thống</h1>
       <SettingsForm current={(rows ?? []) as CaiDatRow[]} />
     </div>
   );

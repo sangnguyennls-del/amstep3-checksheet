@@ -12,6 +12,7 @@ import {
   deleteCongViec,
   type EquipmentActionState,
 } from "@/app/actions/equipment";
+import { ui } from "@/lib/ui";
 
 export type ThietBiDetail = {
   id: string;
@@ -25,6 +26,8 @@ export type ThietBiDetail = {
   truong_ca: string | null;
   nguoi_phu_trach: string | null;
 };
+
+export type NguoiDungOption = { msnv: string; ho_ten: string };
 
 export type CongViecRow = {
   id: string;
@@ -52,76 +55,75 @@ export type ChiTietWithCongViec = ChiTietRow & { congviec: CongViecRow[] };
 const initialState: EquipmentActionState = { error: null };
 
 function inputClass() {
-  return "rounded-md border border-gray-300 px-3 py-2 text-sm";
+  return ui.input;
 }
 
 // ---------------------------------------------------------------------------
 // THIETBI form
 // ---------------------------------------------------------------------------
 
-function ThietBiForm({ thietBi }: { thietBi: ThietBiDetail }) {
+function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiDungOption[] }) {
   const [state, formAction, isPending] = useActionState(updateThietBi, initialState);
 
   return (
     <form
       action={formAction}
-      className="mb-8 grid grid-cols-1 gap-3 rounded-md border bg-white p-4 sm:grid-cols-2 md:grid-cols-3"
+      className={`mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 ${ui.card}`}
     >
       <input type="hidden" name="id" value={thietBi.id} />
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Mã thiết bị</label>
+        <label className={ui.label}>Mã thiết bị</label>
         <input name="maThietBi" defaultValue={thietBi.ma_thiet_bi} required className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Tên thiết bị</label>
+        <label className={ui.label}>Tên thiết bị</label>
         <input name="tenThietBi" defaultValue={thietBi.ten_thiet_bi} required className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Cụm</label>
+        <label className={ui.label}>Cụm</label>
         <input name="cum" defaultValue={thietBi.cum ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Khu vực</label>
+        <label className={ui.label}>Khu vực</label>
         <input name="khuVuc" defaultValue={thietBi.khu_vuc ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Xưởng</label>
+        <label className={ui.label}>Xưởng</label>
         <input name="xuong" defaultValue={thietBi.xuong ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Kíp</label>
+        <label className={ui.label}>Kíp</label>
         <input name="kip" defaultValue={thietBi.kip ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Lãnh đạo</label>
+        <label className={ui.label}>Lãnh đạo</label>
         <input name="lanhDao" defaultValue={thietBi.lanh_dao ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Trưởng ca</label>
+        <label className={ui.label}>Trưởng ca</label>
         <input name="truongCa" defaultValue={thietBi.truong_ca ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">MSNV người phụ trách</label>
-        <input
-          name="nguoiPhuTrach"
-          defaultValue={thietBi.nguoi_phu_trach ?? ""}
-          className={inputClass()}
-        />
+        <label className={ui.label}>Người phụ trách</label>
+        <select name="nguoiPhuTrach" defaultValue={thietBi.nguoi_phu_trach ?? ""} className={inputClass()}>
+          <option value="">-- Chưa gán --</option>
+          {users.map((u) => (
+            <option key={u.msnv} value={u.msnv}>
+              {u.ho_ten} ({u.msnv})
+            </option>
+          ))}
+        </select>
       </div>
 
       {state.error ? (
-        <p role="alert" className="col-span-full text-sm text-red-600">
+        <p role="alert" className={`col-span-full ${ui.errorText}`}>
           {state.error}
         </p>
       ) : null}
-      {state.success ? <p className="col-span-full text-sm text-green-600">Đã lưu.</p> : null}
+      {state.success ? <p className={`col-span-full ${ui.successText}`}>Đã lưu.</p> : null}
 
       <div className="col-span-full">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
           {isPending ? "Đang lưu..." : "Lưu thông tin thiết bị"}
         </button>
       </div>
@@ -605,24 +607,26 @@ function ChiTietItem({ chiTiet }: { chiTiet: ChiTietWithCongViec }) {
 export function EquipmentDetail({
   thietBi,
   chiTietList,
+  users,
 }: {
   thietBi: ThietBiDetail;
   chiTietList: ChiTietWithCongViec[];
+  users: NguoiDungOption[];
 }) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">
+        <h1 className="text-lg font-semibold tracking-tight text-gray-900">
           Thiết bị {thietBi.ma_thiet_bi} - {thietBi.ten_thiet_bi}
         </h1>
-        <Link href="/admin/equipment" className="text-sm text-blue-600 hover:underline">
+        <Link href="/admin/equipment" className="text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline">
           ← Danh sách thiết bị
         </Link>
       </div>
 
-      <ThietBiForm thietBi={thietBi} />
+      <ThietBiForm thietBi={thietBi} users={users} />
 
-      <h2 className="mb-3 text-base font-semibold">Chi tiết (điểm kiểm tra)</h2>
+      <h2 className="mb-3 text-base font-semibold text-gray-900">Chi tiết (điểm kiểm tra)</h2>
       <CreateChiTietForm thietBiId={thietBi.id} />
 
       <div className="flex flex-col gap-3">
@@ -630,7 +634,7 @@ export function EquipmentDetail({
           <ChiTietItem key={ct.id} chiTiet={ct} />
         ))}
         {chiTietList.length === 0 ? (
-          <p className="rounded-md border bg-white p-4 text-center text-sm text-gray-400">
+          <p className={`p-8 text-center text-sm text-gray-500 ${ui.card}`}>
             Chưa có chi tiết nào.
           </p>
         ) : null}

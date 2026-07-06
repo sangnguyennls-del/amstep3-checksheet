@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PlanStatsRow } from "@/lib/checksheet/planStats";
+import { ui } from "@/lib/ui";
 import { BatchPrint } from "./BatchPrint";
 
 const STATUS_LIST = ["Đã cập nhật", "Chưa cập nhật"] as const;
@@ -81,24 +82,20 @@ export function StatsTable({
           ẩn phần tử có class `no-print`, không tự ẩn "mọi thứ ngoài
           .print-area". Bộ lọc + bảng thống kê phải tự đánh dấu để bản in
           hàng loạt (BatchPrint bên dưới) chỉ còn đúng checksheet thiết bị. */}
-      <div className="no-print mb-4 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col text-sm text-gray-600">
+      <div className={`no-print mb-4 flex flex-wrap items-end gap-3 ${ui.card}`}>
+        <label className="flex flex-col gap-1 text-sm text-gray-600">
           Tháng
           <input
             type="month"
             value={month}
             onChange={(e) => handleMonthChange(e.target.value)}
-            className="mt-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
+            className={ui.input}
           />
         </label>
 
-        <label className="flex flex-col text-sm text-gray-600">
+        <label className="flex flex-col gap-1 text-sm text-gray-600">
           Kíp
-          <select
-            value={kip}
-            onChange={(e) => setKip(e.target.value)}
-            className="mt-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
-          >
+          <select value={kip} onChange={(e) => setKip(e.target.value)} className={ui.input}>
             <option value={ALL}>Tất cả</option>
             {kipList.map((k) => (
               <option key={k} value={k}>
@@ -108,24 +105,20 @@ export function StatsTable({
           </select>
         </label>
 
-        <label className="flex flex-col text-sm text-gray-600">
+        <label className="flex flex-col gap-1 text-sm text-gray-600">
           Nhân viên (MSNV)
           <input
             type="text"
             value={nhanVien}
             onChange={(e) => setNhanVien(e.target.value)}
             placeholder="Nhập MSNV..."
-            className="mt-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
+            className={ui.input}
           />
         </label>
 
-        <label className="flex flex-col text-sm text-gray-600">
+        <label className="flex flex-col gap-1 text-sm text-gray-600">
           Trạng thái
-          <select
-            value={trangThai}
-            onChange={(e) => setTrangThai(e.target.value)}
-            className="mt-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
-          >
+          <select value={trangThai} onChange={(e) => setTrangThai(e.target.value)} className={ui.input}>
             <option value={ALL}>Tất cả</option>
             {STATUS_LIST.map((s) => (
               <option key={s} value={s}>
@@ -136,29 +129,29 @@ export function StatsTable({
         </label>
       </div>
 
-      <div className="no-print overflow-x-auto rounded-md border bg-white">
+      <div className={`no-print overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b bg-gray-50 text-left text-gray-600">
+          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
-              <th className="px-3 py-2">Xưởng</th>
-              <th className="px-3 py-2">Kíp</th>
-              <th className="px-3 py-2">Nhân viên</th>
-              <th className="px-3 py-2">Thiết bị</th>
-              <th className="px-3 py-2">Số lượng công việc</th>
-              <th className="px-3 py-2">Trạng thái</th>
+              <th className="px-3 py-2.5">Xưởng</th>
+              <th className="px-3 py-2.5">Kíp</th>
+              <th className="px-3 py-2.5">Nhân viên</th>
+              <th className="px-3 py-2.5">Thiết bị</th>
+              <th className="px-3 py-2.5">Số lượng công việc</th>
+              <th className="px-3 py-2.5">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((row) => (
-              <tr key={row.thietBiId} className="border-b last:border-0 align-top">
-                <td className="px-3 py-2 whitespace-nowrap">{row.xuong ?? "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.kip ?? "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.nguoiPhuTrach ?? "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">{row.tenThietBi}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
+              <tr key={row.thietBiId} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
+                <td className="px-3 py-2.5 whitespace-nowrap">{row.xuong ?? "—"}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{row.kip ?? "—"}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap">{row.nguoiPhuTrach ?? "—"}</td>
+                <td className="px-3 py-2.5 font-medium whitespace-nowrap text-gray-900">{row.tenThietBi}</td>
+                <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
                   {row.plannedTasks}/{row.totalTasks}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2.5 whitespace-nowrap">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[row.status]}`}
                   >
@@ -169,7 +162,7 @@ export function StatsTable({
             ))}
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-3 py-8 text-center text-gray-400">
                   Không có dữ liệu
                 </td>
               </tr>

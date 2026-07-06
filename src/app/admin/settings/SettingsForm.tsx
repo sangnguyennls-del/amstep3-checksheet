@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateSettings, type SettingsActionState } from "@/app/actions/settings";
+import { ui } from "@/lib/ui";
 
 export type CaiDatRow = { key: string; value: string };
 
@@ -26,12 +27,9 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
   const maintenanceMode = (map.MAINTENANCE_MODE ?? "false") === "true";
 
   return (
-    <form
-      action={formAction}
-      className="flex max-w-xl flex-col gap-5 rounded-md border bg-white p-4"
-    >
+    <form action={formAction} className={`flex max-w-xl flex-col gap-5 ${ui.card}`}>
       <div className="flex flex-col gap-1">
-        <label htmlFor="lockDate" className="text-sm font-medium text-gray-700">
+        <label htmlFor="lockDate" className={ui.label}>
           Ngày khoá (Lock Date)
         </label>
         <p className="text-xs text-gray-500">
@@ -46,34 +44,34 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
           step={1}
           defaultValue={lockDate}
           required
-          className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className={`w-32 ${ui.input}`}
         />
       </div>
 
-      <label className="flex items-start gap-2">
+      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableLockDate"
           defaultChecked={enableLockDate}
-          className="mt-1"
+          className="mt-1 h-4 w-4 accent-blue-600"
         />
         <span>
-          <span className="block text-sm font-medium text-gray-700">Bật khoá theo ngày</span>
+          <span className="block text-sm font-medium text-gray-800">Bật khoá theo ngày</span>
           <span className="block text-xs text-gray-500">
             Áp dụng quy tắc Ngày khoá ở trên để chặn sửa dữ liệu quá hạn.
           </span>
         </span>
       </label>
 
-      <label className="flex items-start gap-2">
+      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableTimeLimit"
           defaultChecked={enableTimeLimit}
-          className="mt-1"
+          className="mt-1 h-4 w-4 accent-blue-600"
         />
         <span>
-          <span className="block text-sm font-medium text-gray-700">
+          <span className="block text-sm font-medium text-gray-800">
             Bật giới hạn thời gian ghi Actual
           </span>
           <span className="block text-xs text-gray-500">
@@ -82,15 +80,15 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
         </span>
       </label>
 
-      <label className="flex items-start gap-2">
+      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableDeviceLock"
           defaultChecked={enableDeviceLock}
-          className="mt-1"
+          className="mt-1 h-4 w-4 accent-blue-600"
         />
         <span>
-          <span className="block text-sm font-medium text-gray-700">
+          <span className="block text-sm font-medium text-gray-800">
             Bật khoá theo thiết bị phụ trách
           </span>
           <span className="block text-xs text-gray-500">
@@ -99,12 +97,12 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
         </span>
       </label>
 
-      <label className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3">
+      <label className="flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50 p-3">
         <input
           type="checkbox"
           name="maintenanceMode"
           defaultChecked={maintenanceMode}
-          className="mt-1"
+          className="mt-1 h-4 w-4 accent-red-600"
         />
         <span>
           <span className="block text-sm font-semibold text-red-700">Bảo trì hệ thống</span>
@@ -116,18 +114,14 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
       </label>
 
       {state.error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className={ui.errorText}>
           {state.error}
         </p>
       ) : null}
-      {state.success ? <p className="text-sm text-green-600">Đã lưu cài đặt.</p> : null}
+      {state.success ? <p className={ui.successText}>Đã lưu cài đặt.</p> : null}
 
       <div>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={isPending} className={ui.buttonPrimary}>
           {isPending ? "Đang lưu..." : "Lưu"}
         </button>
       </div>

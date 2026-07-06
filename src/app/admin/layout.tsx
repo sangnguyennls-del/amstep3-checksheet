@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { ui } from "@/lib/ui";
+import { AdminNav } from "./AdminNav";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   try {
@@ -10,33 +12,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* no-print: khi in hàng loạt từ /admin/stats (Task 3, Pha 6), print.css
           chỉ ẩn phần tử có class `no-print` (mô hình opt-out, không phải
           "ẩn tất cả trừ .print-area") -- layout admin (nav) là 1 trong các
           phần khung cần ẩn để bản in chỉ còn đúng checksheet thiết bị. */}
-      <nav className="no-print flex items-center gap-4 border-b bg-white px-6 py-3 text-sm">
-        <span className="font-semibold text-gray-800">Quản trị</span>
-        <Link href="/admin/users" className="text-gray-600 hover:text-blue-600">
-          Người dùng
-        </Link>
-        <Link href="/admin/equipment" className="text-gray-600 hover:text-blue-600">
-          Thiết bị
-        </Link>
-        <Link href="/admin/bat-thuong" className="text-gray-600 hover:text-blue-600">
-          Bất thường
-        </Link>
-        <Link href="/admin/stats" className="text-gray-600 hover:text-blue-600">
-          Thống kê
-        </Link>
-        <Link href="/admin/settings" className="text-gray-600 hover:text-blue-600">
-          Cài đặt
-        </Link>
-        <Link href="/checksheet" className="ml-auto text-gray-600 hover:text-blue-600">
+      <nav className="no-print sticky top-0 z-10 flex items-center gap-5 border-b border-gray-200 bg-white/90 px-6 py-3 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600 text-[11px] font-semibold text-white">
+            AM
+          </div>
+          <span className="text-sm font-semibold text-gray-900">Quản trị</span>
+        </div>
+        <AdminNav />
+        <Link href="/checksheet" className={`ml-auto ${ui.navLink}`}>
           Về Checksheet
         </Link>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="mx-auto max-w-6xl p-6">{children}</main>
     </div>
   );
 }
