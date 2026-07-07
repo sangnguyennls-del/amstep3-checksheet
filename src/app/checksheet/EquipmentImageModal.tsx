@@ -10,7 +10,7 @@ import { useRef, useState } from "react";
  * link"). Nếu không khớp định dạng Drive nào đã biết, trả về nguyên `url` --
  * cho phép admin dán thẳng 1 link ảnh trực tiếp (không phải Drive) nếu muốn.
  */
-function toDriveImageSrc(url: string): string {
+export function toDriveImageSrc(url: string): string {
   const patterns = [/\/file\/d\/([^/]+)/, /[?&]id=([^&]+)/];
   for (const p of patterns) {
     const m = url.match(p);

@@ -12,7 +12,7 @@ import { ui } from "@/lib/ui";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
 import { BatThuongModal } from "./BatThuongModal";
 import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
-import { EquipmentImageModal } from "./EquipmentImageModal";
+import { EquipmentImageModal, toDriveImageSrc } from "./EquipmentImageModal";
 import checksheetStyles from "./checksheet.module.css";
 import "./print.css";
 
@@ -694,29 +694,39 @@ export function ChecksheetApp({
                     <InfoField label="Lãnh đạo xưởng" value={selectedThietBi.lanhDao} />
                     <InfoField label="Trưởng ca" value={selectedThietBi.truongCa} />
                   </dl>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3">
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                    <span className="flex items-center gap-1.5">
-                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgY}`} />
-                      Kế hoạch
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgG}`} />
-                      Thực tế tốt
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgR}`} />
-                      Bất thường
-                    </span>
-                  </div>
                   <button
                     type="button"
-                    className={`no-print ${ui.buttonSecondary} px-2! py-1! text-xs!`}
+                    className="shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50"
                     onClick={() => setImageModalOpen(true)}
+                    title="Bấm để phóng to ảnh sơ đồ thiết bị"
                   >
-                    Xem ảnh thiết bị
+                    {selectedThietBi.anhUrl && selectedThietBi.anhUrl.trim() !== "" ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- ảnh Google Drive bên ngoài
+                      <img
+                        src={toDriveImageSrc(selectedThietBi.anhUrl.trim())}
+                        alt={`Sơ đồ thiết bị ${selectedThietBi.tenThietBi}`}
+                        className="h-28 w-36 object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-28 w-36 items-center justify-center text-center text-xs text-gray-400">
+                        Chưa có ảnh
+                      </div>
+                    )}
                   </button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 text-xs text-gray-600">
+                  <span className="flex items-center gap-1.5">
+                    <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgY}`} />
+                    Kế hoạch
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgG}`} />
+                    Thực tế tốt
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgR}`} />
+                    Bất thường
+                  </span>
                 </div>
               </div>
             ) : null}
