@@ -34,8 +34,9 @@ export default async function ChecksheetPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">
               AM
             </div>
-            <h1 className="text-base font-semibold tracking-tight text-gray-900">
-              Checksheet AM Bước 3
+            <h1 className="text-base font-semibold tracking-tight whitespace-nowrap text-gray-900">
+              <span className="hidden sm:inline">Checksheet AM Bước 3</span>
+              <span className="sm:hidden">AM Bước 3</span>
             </h1>
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -58,7 +59,7 @@ export default async function ChecksheetPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-6">
+      <main className="mx-auto w-full min-w-0 max-w-6xl p-6">
         <ChecksheetApp
           currentUser={{ msnv: profile?.msnv ?? null, hoTen: profile?.ho_ten ?? user.email ?? "" }}
           filterOptions={filterOptions}

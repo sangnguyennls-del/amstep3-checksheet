@@ -469,10 +469,10 @@ export function ChecksheetApp({
       </p>
 
       <div className={`no-print mb-4 flex flex-wrap items-end gap-3 ${ui.card}`}>
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
           <label className={ui.label}>Xưởng</label>
           <select
-            className={selectClass}
+            className={`w-full min-w-0 ${selectClass}`}
             value={xuong}
             onChange={(e) => handleXuongChange(e.target.value)}
           >
@@ -485,10 +485,10 @@ export function ChecksheetApp({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
           <label className={ui.label}>Kíp</label>
           <select
-            className={selectClass}
+            className={`w-full min-w-0 ${selectClass}`}
             value={kip}
             onChange={(e) => handleKipChange(e.target.value)}
           >
@@ -501,10 +501,10 @@ export function ChecksheetApp({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
           <label className={ui.label}>Nhân viên phụ trách</label>
           <select
-            className={selectClass}
+            className={`w-full min-w-0 ${selectClass}`}
             value={nhanVienMsnv}
             onChange={(e) => handleNhanVienChange(e.target.value)}
           >
@@ -520,10 +520,10 @@ export function ChecksheetApp({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
           <label className={ui.label}>Thiết bị</label>
           <select
-            className={selectClass}
+            className={`w-full min-w-0 ${selectClass}`}
             value={thietBiId}
             onChange={(e) => setThietBiId(e.target.value)}
           >
@@ -536,11 +536,11 @@ export function ChecksheetApp({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
           <label className={ui.label}>Tháng</label>
           <input
             type="month"
-            className={selectClass}
+            className={`w-full min-w-0 ${selectClass}`}
             value={monthValue}
             onChange={(e) => setMonthValue(e.target.value)}
           />
@@ -550,7 +550,7 @@ export function ChecksheetApp({
           type="button"
           disabled={!canLoad || loading}
           onClick={handleLoad}
-          className={ui.buttonPrimary}
+          className={`w-full sm:w-auto ${ui.buttonPrimary}`}
         >
           {loading ? "Đang tải..." : "Xem checksheet"}
         </button>
