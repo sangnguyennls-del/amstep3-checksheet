@@ -126,7 +126,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
         {TRANG_THAI_LIST.map((trangThai) => (
           <label
             key={trangThai}
-            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm transition-colors hover:bg-gray-50 has-[:checked]:border-blue-300 has-[:checked]:bg-blue-50"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm transition-colors hover:bg-gray-50 has-[:checked]:border-[#0066cc]/40 has-[:checked]:bg-[#0066cc]/5"
           >
             <input
               type="checkbox"
@@ -184,7 +184,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
                       href={item.anhUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 transition-colors hover:text-blue-700 hover:underline"
+                      className="text-[#0066cc] transition-colors hover:text-[#0055ab] hover:underline"
                     >
                       Xem ảnh
                     </a>

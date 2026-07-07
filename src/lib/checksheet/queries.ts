@@ -10,6 +10,10 @@ type ThietBiRow = {
   ten_thiet_bi: string;
   xuong: string | null;
   kip: string | null;
+  cum: string | null;
+  khu_vuc: string | null;
+  lanh_dao: string | null;
+  truong_ca: string | null;
   nguoi_phu_trach: string | null;
   anh_url: string | null;
   nguoidung: { ho_ten: string } | { ho_ten: string }[] | null;
@@ -40,7 +44,9 @@ export function parseNhanVienMsnv(nhanVienDisplay: string): string {
 export async function getFilterOptions(supabase: SupabaseClient): Promise<FilterOptions> {
   const { data, error } = await supabase
     .from("thietbi")
-    .select("id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nguoi_phu_trach, anh_url, nguoidung(ho_ten)")
+    .select(
+      "id, ma_thiet_bi, ten_thiet_bi, xuong, kip, cum, khu_vuc, lanh_dao, truong_ca, nguoi_phu_trach, anh_url, nguoidung(ho_ten)",
+    )
     .order("ma_thiet_bi");
 
   if (error) throw error;
@@ -53,7 +59,12 @@ export async function getFilterOptions(supabase: SupabaseClient): Promise<Filter
     tenThietBi: r.ten_thiet_bi,
     xuong: r.xuong ?? "",
     kip: r.kip ?? "",
+    cum: r.cum ?? null,
+    khuVuc: r.khu_vuc ?? null,
+    lanhDao: r.lanh_dao ?? null,
+    truongCa: r.truong_ca ?? null,
     nguoiPhuTrach: r.nguoi_phu_trach ?? null,
+    nguoiPhuTrachTen: firstOrNull(r.nguoidung)?.ho_ten ?? null,
     anhUrl: r.anh_url ?? null,
   }));
 
@@ -77,6 +88,8 @@ type CongViecJoinRow = {
   chitiet_id: string;
   loai_hoat_dong: string;
   thoi_gian: number | null;
+  tan_suat_chu: string | null;
+  tan_suat_so: number | null;
   chitiet:
     | { stt: number | null; ten_chi_tiet: string; dieu_kien_co_ban: string | null }
     | { stt: number | null; ten_chi_tiet: string; dieu_kien_co_ban: string | null }[]
@@ -110,7 +123,7 @@ export async function getCongViecRows(
   const { data, error } = await supabase
     .from("congviec")
     .select(
-      "id, chitiet_id, loai_hoat_dong, thoi_gian, active, hieu_luc_tu, hieu_luc_den, chitiet!inner(stt, ten_chi_tiet, dieu_kien_co_ban, thietbi_id)",
+      "id, chitiet_id, loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so, active, hieu_luc_tu, hieu_luc_den, chitiet!inner(stt, ten_chi_tiet, dieu_kien_co_ban, thietbi_id)",
     )
     .eq("chitiet.thietbi_id", thietBiId)
     .eq("active", true)
@@ -133,6 +146,8 @@ export async function getCongViecRows(
       dieuKienCoBan: chiTiet?.dieu_kien_co_ban ?? null,
       loaiHoatDong: r.loai_hoat_dong,
       thoiGian: r.thoi_gian,
+      tanSuatChu: r.tan_suat_chu,
+      tanSuatSo: r.tan_suat_so,
     };
   });
 }

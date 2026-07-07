@@ -29,9 +29,9 @@ export default async function ChecksheetPage() {
   return (
     <>
       <header className="no-print sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+        <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-xs font-semibold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#0066cc] text-xs font-semibold text-white">
               AM
             </div>
             <h1 className="text-base font-semibold tracking-tight whitespace-nowrap text-gray-900">
@@ -59,9 +59,13 @@ export default async function ChecksheetPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full min-w-0 max-w-6xl p-6">
+      <main className="mx-auto w-full min-w-0 max-w-[1920px] p-6">
         <ChecksheetApp
-          currentUser={{ msnv: profile?.msnv ?? null, hoTen: profile?.ho_ten ?? user.email ?? "" }}
+          currentUser={{
+            msnv: profile?.msnv ?? null,
+            hoTen: profile?.ho_ten ?? user.email ?? "",
+            vaiTro: profile?.vai_tro ?? null,
+          }}
           filterOptions={filterOptions}
         />
       </main>

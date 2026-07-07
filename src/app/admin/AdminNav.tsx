@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ui } from "@/lib/ui";
 
 const links = [
   { href: "/admin/users", label: "Người dùng" },
@@ -22,11 +23,7 @@ export function AdminNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={
-              active
-                ? "text-sm font-medium text-blue-600"
-                : "text-sm font-medium text-gray-600 transition-colors hover:text-blue-600"
-            }
+            className={active ? ui.navLinkActive : ui.navLink}
           >
             {link.label}
           </Link>

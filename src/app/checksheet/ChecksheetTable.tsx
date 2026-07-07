@@ -49,6 +49,71 @@ export function listDaysInRange(thangDau: string, thangCuoi: string): string[] {
   return days;
 }
 
+// 4 cột con của "Tần suất" đúng thứ tự trên mẫu giấy. `tan_suat_chu` là text
+// tự do (không có CHECK constraint ở DB, xem 0001_schema.sql) nên phải chuẩn
+// hoá (bỏ dấu, lowercase) trước khi so khớp thay vì so chuỗi y nguyên.
+const TAN_SUAT_COLUMNS = ["Ngày", "Tuần", "Tháng", "Quý"] as const;
+
+function stripDiacritics(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+const TAN_SUAT_KEYS = TAN_SUAT_COLUMNS.map(stripDiacritics);
+
+/**
+ * Trả về chỉ số cột con (0-3) khớp với `tanSuatChu`, hoặc null nếu không
+ * khớp bất kỳ nhãn nào trong 4 nhãn chuẩn. Dữ liệu không khớp KHÔNG được bỏ
+ * qua ở nơi gọi hàm này -- xem `TanSuatCells` bên dưới (rơi vào cột "Tháng"
+ * kèm giá trị gốc trong `title` để không mất dữ liệu).
+ */
+function matchTanSuatCol(tanSuatChu: string | null): number | null {
+  if (!tanSuatChu) return null;
+  const key = stripDiacritics(tanSuatChu.trim());
+  const idx = TAN_SUAT_KEYS.findIndex((k) => key === k || key.startsWith(k));
+  return idx === -1 ? null : idx;
+}
+
+function TanSuatCells({ row }: { row: CongViecRow }) {
+  const matched = matchTanSuatCol(row.tanSuatChu);
+  const hasValue = row.tanSuatSo != null && row.tanSuatChu;
+  // Không khớp 4 nhãn chuẩn: đặt tạm vào cột "Tháng" (phổ biến nhất) kèm chú
+  // giải giá trị gốc qua `title` -- ưu tiên không mất dữ liệu hơn là đoán sai
+  // vị trí, xem quyết định trong kế hoạch (Việc B3).
+  const fallbackCol = matched ?? 2;
+  return (
+    <>
+      {TAN_SUAT_COLUMNS.map((label, idx) => {
+        const showHere = hasValue && (matched !== null ? idx === matched : idx === fallbackCol);
+        return (
+          <td
+            key={label}
+            className="border border-gray-200 px-1 py-1 text-center tabular-nums"
+            title={showHere && matched === null ? `Đơn vị gốc: "${row.tanSuatChu}"` : undefined}
+          >
+            {showHere ? row.tanSuatSo : ""}
+          </td>
+        );
+      })}
+    </>
+  );
+}
+
+const COL_WIDTHS = {
+  so: 44,
+  tenChiTiet: 190,
+  dieuKienCoBan: 230,
+  tieuChuan: 90,
+  nguoiPhuTrach: 130,
+  thoiGian: 64,
+  auto: 56,
+  thaoTac: 96,
+  tanSuat: 44,
+  ngay: 32,
+} as const;
+
 export function ChecksheetTable({
   rows,
   thucHien,
@@ -56,6 +121,10 @@ export function ChecksheetTable({
   thangCuoi,
   editability,
   todayIso,
+  nguoiPhuTrachTen,
+  canManageCongViec,
+  onEditCongViec,
+  onRemoveCongViec,
   onSetPlan,
   onSetAct,
   onRequestBatThuong,
@@ -73,6 +142,15 @@ export function ChecksheetTable({
   editability: EditabilityMap;
   /** Hôm nay (ISO) -- truyền xuống Cell chỉ để tô gợi ý cửa sổ +-4 ngày. */
   todayIso: string;
+  /** Tên người phụ trách thiết bị (1 người/1 thiết bị, xem CLAUDE.md) -- hiện
+   * lặp lại ở cột "Người chịu trách nhiệm" mỗi dòng đúng như mẫu giấy, không
+   * rowSpan-merge (đây không phải field theo từng CONGVIEC trong DB). */
+  nguoiPhuTrachTen: string | null;
+  /** Việc C: gợi ý UI cho cột "Thao tác" (Sửa/Loại bỏ) -- CHỈ ẩn/hiện, quyền
+   * thật do RPC `can_manage_congviec` quyết định (xem EditCongViecModal.tsx). */
+  canManageCongViec: boolean;
+  onEditCongViec: (row: CongViecRow) => void;
+  onRemoveCongViec: (row: CongViecRow) => void;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
   /** Task 4: mở modal ghi nhận bất thường (xem Cell.tsx). */
@@ -84,6 +162,7 @@ export function ChecksheetTable({
 }) {
   const rowSpans = calcRowSpans(rows);
   const days = listDaysInRange(thangDau, thangCuoi);
+  const [namNam, thangNam] = thangDau.split("-").map(Number);
 
   // Kéo-tô: isPaintingRef bật khi pointerdown trên 1 ô, tắt khi pointerup ở
   // bất kỳ đâu (kể cả ngoài bảng) hoặc window mất focus -- currentOpRef lưu
@@ -134,19 +213,68 @@ export function ChecksheetTable({
 
   return (
     <div className="overflow-x-auto rounded-md border bg-white">
-      <table className="min-w-full border-collapse text-xs">
+      <table className="border-collapse text-xs" style={{ tableLayout: "fixed", width: "100%" }}>
+        <colgroup>
+          <col style={{ width: COL_WIDTHS.so }} />
+          <col style={{ width: COL_WIDTHS.tenChiTiet }} />
+          <col style={{ width: COL_WIDTHS.dieuKienCoBan }} />
+          <col style={{ width: COL_WIDTHS.tieuChuan }} />
+          <col style={{ width: COL_WIDTHS.nguoiPhuTrach }} />
+          <col style={{ width: COL_WIDTHS.thoiGian }} />
+          <col style={{ width: COL_WIDTHS.auto }} />
+          <col className="no-print" style={{ width: COL_WIDTHS.thaoTac }} />
+          {TAN_SUAT_COLUMNS.map((label) => (
+            <col key={label} style={{ width: COL_WIDTHS.tanSuat }} />
+          ))}
+          {days.map((d) => (
+            <col key={d} style={{ width: COL_WIDTHS.ngay }} />
+          ))}
+        </colgroup>
         <thead className="border-b bg-gray-50 text-left text-gray-600">
           <tr>
-            <th className="border px-2 py-1">STT</th>
-            <th className="border px-2 py-1">Nội dung</th>
-            <th className="border px-2 py-1">Tiêu chuẩn</th>
-            <th className="border px-2 py-1">Loại</th>
-            <th className="border px-2 py-1">Thời gian</th>
-            <th className="border px-1 py-1 text-center" title="Tự động tô Plan mỗi 4/8 ngày">
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Số
+            </th>
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Tên chi tiết
+            </th>
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Điều kiện cơ bản
+            </th>
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Tiêu chuẩn
+            </th>
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Người chịu trách nhiệm
+            </th>
+            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+              Thời gian
+            </th>
+            <th
+              className="border border-gray-200 px-1 py-1 text-center"
+              rowSpan={2}
+              title="Tự động tô Plan mỗi 4/8 ngày"
+            >
               Auto
             </th>
+            <th className="no-print border border-gray-200 px-1 py-1 text-center" rowSpan={2}>
+              Thao tác
+            </th>
+            <th className="border border-gray-200 px-1 py-1 text-center" colSpan={TAN_SUAT_COLUMNS.length}>
+              Tần suất
+            </th>
+            <th className="border border-gray-200 px-1 py-1 text-center" colSpan={days.length}>
+              Tháng {thangNam} / Năm {namNam}
+            </th>
+          </tr>
+          <tr>
+            {TAN_SUAT_COLUMNS.map((label) => (
+              <th key={label} className="border border-gray-200 px-1 py-1 text-center">
+                {label}
+              </th>
+            ))}
             {days.map((d) => (
-              <th key={d} className="border px-1 py-1 text-center">
+              <th key={d} className="border border-gray-200 px-1 py-1 text-center">
                 {Number(d.slice(8, 10))}
               </th>
             ))}
@@ -160,20 +288,23 @@ export function ChecksheetTable({
               <tr key={row.congViecId} className="border-b last:border-0">
                 {isGroupStart ? (
                   <>
-                    <td className="border px-2 py-1 text-center align-top" rowSpan={span}>
+                    <td className="border border-gray-200 px-2 py-1 text-center align-top" rowSpan={span}>
                       {row.stt ?? ""}
                     </td>
-                    <td className="border px-2 py-1 align-top" rowSpan={span}>
+                    <td className="border border-gray-200 px-2 py-1 align-top" rowSpan={span}>
                       {row.tenChiTiet}
                     </td>
-                    <td className="border px-2 py-1 align-top" rowSpan={span}>
+                    <td className="border border-gray-200 px-2 py-1 align-top" rowSpan={span}>
                       {row.dieuKienCoBan ?? ""}
                     </td>
                   </>
                 ) : null}
-                <td className="border px-2 py-1">{row.loaiHoatDong}</td>
-                <td className="border px-2 py-1 text-center">{row.thoiGian ?? ""}</td>
-                <td className="border px-1 py-1 text-center">
+                <td className="border border-gray-200 px-2 py-1">{row.loaiHoatDong}</td>
+                <td className="border border-gray-200 px-2 py-1">{nguoiPhuTrachTen ?? ""}</td>
+                <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
+                  {row.thoiGian ?? ""}
+                </td>
+                <td className="border border-gray-200 px-1 py-1 text-center">
                   {/* P4/P8: tô Plan mỗi 4/8 ngày bắt đầu từ "ngày vừa bấm" trong
                       chính hàng này (selectedDay) -- bấm 1 ô ngày trước, rồi bấm
                       P4/P8. Disable nếu chưa chọn ngày nào trong hàng. */}
@@ -204,11 +335,34 @@ export function ChecksheetTable({
                     </button>
                   </div>
                 </td>
+                <td className="no-print border border-gray-200 px-1 py-1 text-center">
+                  {canManageCongViec ? (
+                    <div className="flex justify-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded border px-1.5 text-[10px] leading-4 hover:bg-gray-100"
+                        title="Sửa thời gian/tần suất"
+                        onClick={() => onEditCongViec(row)}
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-red-300 px-1.5 text-[10px] leading-4 text-red-600 hover:bg-red-50"
+                        title="Loại bỏ công việc này (giữ lịch sử)"
+                        onClick={() => onRemoveCongViec(row)}
+                      >
+                        Xoá
+                      </button>
+                    </div>
+                  ) : null}
+                </td>
+                <TanSuatCells row={row} />
                 {days.map((d) => {
                   const cell = thucHien[cellKey(row.congViecId, d)];
                   const rowEditable = editability[row.congViecId] ?? DENY_EDITABLE;
                   return (
-                    <td key={d} className="border p-0">
+                    <td key={d} className="border border-gray-200 p-0">
                       <Cell
                         congViecId={row.congViecId}
                         ngay={d}

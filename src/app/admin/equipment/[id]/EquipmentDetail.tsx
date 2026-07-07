@@ -186,7 +186,7 @@ function CreateCongViecForm({ chiTietId, thietBiId }: { chiTietId: string; thiet
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-full bg-[#0066cc] px-2 py-1 text-xs font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
             >
               {isPending ? "Đang thêm..." : "Thêm"}
             </button>
@@ -311,7 +311,7 @@ function EditCongViecDialog({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
             >
               {isPending ? "Đang lưu..." : "Lưu"}
             </button>
@@ -413,7 +413,7 @@ function CreateChiTietForm({ thietBiId }: { thietBiId: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab]"
       >
         {open ? "Đóng" : "+ Thêm chi tiết"}
       </button>
@@ -450,7 +450,7 @@ function CreateChiTietForm({ thietBiId }: { thietBiId: string }) {
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
             >
               {isPending ? "Đang thêm..." : "Thêm chi tiết"}
             </button>
@@ -517,7 +517,7 @@ function EditChiTietDialog({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
             >
               {isPending ? "Đang lưu..." : "Lưu"}
             </button>
@@ -619,7 +619,10 @@ export function EquipmentDetail({
         <h1 className="text-lg font-semibold tracking-tight text-gray-900">
           Thiết bị {thietBi.ma_thiet_bi} - {thietBi.ten_thiet_bi}
         </h1>
-        <Link href="/admin/equipment" className="text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline">
+        <Link
+          href="/admin/equipment"
+          className="text-sm text-[#0066cc] transition-colors hover:text-[#0055ab] hover:underline"
+        >
           ← Danh sách thiết bị
         </Link>
       </div>

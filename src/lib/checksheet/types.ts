@@ -12,6 +12,11 @@ export type CongViecRow = {
   dieuKienCoBan: string | null;
   loaiHoatDong: string;
   thoiGian: number | null;
+  // Tần suất (đơn vị tự do "Ngày"/"Tuần"/"Tháng"/"Quý" + số lần) -- dùng để
+  // hiện 4 cột con "Tần suất" trên checksheet đúng mẫu giấy (xem
+  // ChecksheetTable.tsx `matchTanSuatCot`).
+  tanSuatChu: string | null;
+  tanSuatSo: number | null;
 };
 
 export type ThucHienCell = {
@@ -48,7 +53,12 @@ export type FilterOptions = {
     tenThietBi: string;
     xuong: string;
     kip: string;
+    cum: string | null;
+    khuVuc: string | null;
+    lanhDao: string | null;
+    truongCa: string | null;
     nguoiPhuTrach: string | null;
+    nguoiPhuTrachTen: string | null;
     anhUrl: string | null;
   }[];
 };

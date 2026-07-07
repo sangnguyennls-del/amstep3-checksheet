@@ -11,10 +11,22 @@ import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { ui } from "@/lib/ui";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
 import { BatThuongModal } from "./BatThuongModal";
+import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
 import { EquipmentImageModal } from "./EquipmentImageModal";
+import checksheetStyles from "./checksheet.module.css";
 import "./print.css";
 
 type ThietBiOption = FilterOptions["thietBi"][number];
+
+/** 1 ô nhãn/giá trị trong khối thông tin đầu trang (đúng bố cục mẫu giấy). */
+function InfoField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-[11px] tracking-wide text-gray-500 uppercase">{label}</dt>
+      <dd className="text-sm font-medium text-gray-900">{value || "-"}</dd>
+    </div>
+  );
+}
 
 /**
  * Tách "CV00001_2026-07-15" thành { congViecId: "CV00001", ngay: "2026-07-15" }
@@ -78,7 +90,7 @@ export function ChecksheetApp({
   currentUser,
   filterOptions,
 }: {
-  currentUser: { msnv: string | null; hoTen: string };
+  currentUser: { msnv: string | null; hoTen: string; vaiTro: string | null };
   filterOptions: FilterOptions;
 }) {
   const [xuong, setXuong] = useState("");
@@ -107,6 +119,12 @@ export function ChecksheetApp({
     null,
   );
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  // Việc C: modal "Sửa thời gian/tần suất" hoặc "Loại bỏ" 1 công việc, mở từ
+  // nút trên ChecksheetTable -- null khi không có modal nào đang mở.
+  const [editTarget, setEditTarget] = useState<{
+    mode: "edit" | "remove";
+    target: EditCongViecTarget;
+  } | null>(null);
 
   // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn, thu hẹp
   // kip/nhanVien theo xuong đã chọn -- đúng thuật toán hệ cũ (App.applyFilters
@@ -142,6 +160,14 @@ export function ChecksheetApp({
   const selectedThietBi: ThietBiOption | undefined = thietBiAfterNhanVien.find(
     (tb) => tb.id === thietBiId,
   );
+
+  // Việc C: gợi ý UI cho nút "Sửa"/"Loại bỏ" trên ChecksheetTable -- CHỈ để
+  // ẩn/hiện, không phải nguồn chân lý (quyền thật do RPC `can_manage_congviec`
+  // quyết định, xem migration 0010). Admin/AdminM hoặc đúng người phụ trách
+  // thiết bị đang xem mới thấy các nút này.
+  const isAdminRole = currentUser.vaiTro === "admin" || currentUser.vaiTro === "adminm";
+  const canManageDevice =
+    isAdminRole || (!!selectedThietBi && !!currentUser.msnv && selectedThietBi.nguoiPhuTrach === currentUser.msnv);
 
   function handleXuongChange(value: string) {
     setXuong(value);
@@ -234,6 +260,42 @@ export function ChecksheetApp({
     // Ghi nhận bất thường cũng là 1 lần lưu Actual thật -- có thể vừa xoá 1
     // mục "thiếu Actual" khỏi chuông, nên báo cho NotificationBell tải lại.
     window.dispatchEvent(new Event(CHECKSHEET_SAVED_EVENT));
+  }
+
+  // Việc C: mở modal "Sửa"/"Loại bỏ" cho đúng công việc vừa bấm nút trên
+  // ChecksheetTable (xem nút "Thao tác" mới trong ChecksheetTable.tsx).
+  function handleOpenEditCongViec(mode: "edit" | "remove", row: CongViecRow) {
+    setEditTarget({
+      mode,
+      target: {
+        congViecId: row.congViecId,
+        tenChiTiet: row.tenChiTiet,
+        loaiHoatDong: row.loaiHoatDong,
+        thoiGian: row.thoiGian,
+        tanSuatChu: row.tanSuatChu,
+        tanSuatSo: row.tanSuatSo,
+      },
+    });
+  }
+
+  // Modal đã gọi RPC (update_congviec_with_reason/remove_congviec_with_reason)
+  // THÀNH CÔNG -- cập nhật state cục bộ, KHÔNG tải lại cả trang: "edit" sửa
+  // tại chỗ 3 field vừa đổi; "remove" lọc hẳn dòng khỏi mảng `rows` (đúng
+  // hành vi loại bỏ mềm -- dòng biến mất khỏi checksheet dù DB vẫn còn
+  // active=false, xem docstring RPC).
+  function handleEditCongViecSuccess(result: EditCongViecResult) {
+    if (result.mode === "remove") {
+      setRows((prev) => prev.filter((r) => r.congViecId !== result.congViecId));
+    } else {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.congViecId === result.congViecId
+            ? { ...r, thoiGian: result.thoiGian, tanSuatChu: result.tanSuatChu, tanSuatSo: result.tanSuatSo }
+            : r,
+        ),
+      );
+    }
+    setEditTarget(null);
   }
 
   /**
@@ -556,22 +618,6 @@ export function ChecksheetApp({
         </button>
       </div>
 
-      {selectedThietBi ? (
-        <p className="no-print mb-3 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-          <span>
-            Thiết bị: <span className="font-medium text-gray-900">{selectedThietBi.tenThietBi}</span> — Xưởng{" "}
-            {selectedThietBi.xuong || "-"} / Kíp {selectedThietBi.kip || "-"}
-          </span>
-          <button
-            type="button"
-            className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}
-            onClick={() => setImageModalOpen(true)}
-          >
-            Xem ảnh thiết bị
-          </button>
-        </p>
-      ) : null}
-
       {loadError ? <p className={`no-print mb-3 ${ui.errorText}`}>{loadError}</p> : null}
       {saveError ? <p className={`no-print mb-3 ${ui.errorText}`}>{saveError}</p> : null}
 
@@ -619,8 +665,61 @@ export function ChecksheetApp({
             </div>
           </div>
           {/* .print-area (print.css): PHẦN DUY NHẤT còn hiển thị khi in --
-              bảng chấm công A3 ngang, không kèm nút bấm/thông báo. */}
+              khối thông tin đầu trang + bảng chấm công A3 ngang, không kèm
+              nút bấm/thông báo (những phần đó vẫn giữ .no-print riêng bên
+              trong khối này). */}
           <div className="print-area">
+            {selectedThietBi ? (
+              <div className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#0066cc] text-xs font-bold text-white">
+                      AM
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold tracking-tight text-gray-900">
+                        CHECKSHEET BƯỚC 3
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Ngày lập: {todayIso.split("-").reverse().join("/")}
+                      </p>
+                    </div>
+                  </div>
+                  <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-7">
+                    <InfoField label="Nhóm nhỏ (Kíp)" value={selectedThietBi.kip} />
+                    <InfoField label="Cụm" value={selectedThietBi.cum} />
+                    <InfoField label="Phòng/Xưởng" value={selectedThietBi.xuong} />
+                    <InfoField label="Khu vực" value={selectedThietBi.khuVuc} />
+                    <InfoField label="Tên thiết bị" value={selectedThietBi.tenThietBi} />
+                    <InfoField label="Lãnh đạo xưởng" value={selectedThietBi.lanhDao} />
+                    <InfoField label="Trưởng ca" value={selectedThietBi.truongCa} />
+                  </dl>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                  <div className="flex items-center gap-4 text-xs text-gray-600">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgY}`} />
+                      Kế hoạch
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgG}`} />
+                      Thực tế tốt
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={`inline-block h-3 w-3 rounded-sm ${checksheetStyles.bgR}`} />
+                      Bất thường
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={`no-print ${ui.buttonSecondary} px-2! py-1! text-xs!`}
+                    onClick={() => setImageModalOpen(true)}
+                  >
+                    Xem ảnh thiết bị
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <ChecksheetTable
               rows={rows}
               thucHien={gridState.cells}
@@ -628,6 +727,10 @@ export function ChecksheetApp({
               thangCuoi={thangCuoi}
               editability={editability}
               todayIso={todayIso}
+              nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
+              canManageCongViec={canManageDevice}
+              onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
+              onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
               onSetPlan={handleSetPlan}
               onSetAct={handleSetAct}
               onRequestBatThuong={handleRequestBatThuong}
@@ -658,6 +761,15 @@ export function ChecksheetApp({
         onClose={() => setImageModalOpen(false)}
         anhUrl={selectedThietBi?.anhUrl ?? null}
         tenThietBi={selectedThietBi?.tenThietBi ?? ""}
+      />
+
+      <EditCongViecModal
+        key={editTarget ? `${editTarget.mode}_${editTarget.target.congViecId}` : "none"}
+        open={!!editTarget}
+        mode={editTarget?.mode ?? "edit"}
+        target={editTarget?.target ?? null}
+        onClose={() => setEditTarget(null)}
+        onSuccess={handleEditCongViecSuccess}
       />
     </div>
   );

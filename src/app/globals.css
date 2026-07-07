@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8f9fb;
-  --foreground: #171923;
+  /* Apple parchment/ink (xem apple-DESIGN.md) -- nền off-white, chữ near-black
+     thay vì gray-900 mặc định, đồng bộ với accent #0066cc trong ui.ts. */
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
 }
 
 @theme inline {

@@ -53,7 +53,7 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
           type="checkbox"
           name="enableLockDate"
           defaultChecked={enableLockDate}
-          className="mt-1 h-4 w-4 accent-blue-600"
+          className="mt-1 h-4 w-4 accent-[#0066cc]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">Bật khoá theo ngày</span>
@@ -68,7 +68,7 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
           type="checkbox"
           name="enableTimeLimit"
           defaultChecked={enableTimeLimit}
-          className="mt-1 h-4 w-4 accent-blue-600"
+          className="mt-1 h-4 w-4 accent-[#0066cc]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">
@@ -85,7 +85,7 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
           type="checkbox"
           name="enableDeviceLock"
           defaultChecked={enableDeviceLock}
-          className="mt-1 h-4 w-4 accent-blue-600"
+          className="mt-1 h-4 w-4 accent-[#0066cc]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">

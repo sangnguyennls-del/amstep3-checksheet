@@ -197,6 +197,14 @@ export function BatchPrint({
             thangCuoi={thangCuoi}
             editability={{}}
             todayIso={todayIso}
+            // In hàng loạt từ /admin/stats không có sẵn tên đã resolve của
+            // người phụ trách (PrintDevice chỉ có id/tên thiết bị) -- để
+            // trống thay vì thêm 1 query riêng chỉ cho tính năng phụ này.
+            nguoiPhuTrachTen={null}
+            // In hàng loạt chỉ để xem/in, không sửa -- ẩn hẳn cột "Thao tác".
+            canManageCongViec={false}
+            onEditCongViec={() => {}}
+            onRemoveCongViec={() => {}}
             onSetPlan={() => {}}
             onSetAct={() => {}}
             onRequestBatThuong={() => {}}

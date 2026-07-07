@@ -248,7 +248,7 @@ export function UsersTable({
                       u.vai_tro === "adminm"
                         ? "rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
                         : u.vai_tro === "admin"
-                          ? "rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                          ? "rounded-full bg-[#0066cc]/10 px-2 py-0.5 text-xs font-medium text-[#0066cc]"
                           : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
                     }
                   >
