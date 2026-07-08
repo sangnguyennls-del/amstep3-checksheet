@@ -1,50 +1,39 @@
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { getDeXuatCongViecList } from "@/lib/checksheet/deXuatCongViecList";
+import { DeXuatCongViecList } from "./de-xuat/DeXuatCongViecList";
 
-const SECTIONS = [
-  {
-    href: "/admin/users",
-    title: "Người dùng",
-    desc: "Quản lý tài khoản, vai trò, đặt lại mật khẩu",
-  },
-  {
-    href: "/admin/equipment",
-    title: "Thiết bị",
-    desc: "Quản lý cây thiết bị / chi tiết / công việc",
-  },
-  {
-    href: "/admin/bat-thuong",
-    title: "Bất thường",
-    desc: "Danh sách và trạng thái các bất thường đã ghi nhận",
-  },
-  {
-    href: "/admin/stats",
-    title: "Thống kê",
-    desc: "Tỉ lệ hoàn thành Plan theo thiết bị, lọc theo Nhóm/Nhân viên/Trạng thái",
-  },
-  {
-    href: "/admin/settings",
-    title: "Cài đặt",
-    desc: "Cấu hình khoá thời gian, chế độ bảo trì",
-  },
-];
+// Trang chính /admin = hàng đợi đề xuất chờ duyệt (thay cho menu thẻ cũ) --
+// đây là việc Admin cần xử lý nhanh nhất mỗi khi vào trang quản trị. Điều
+// hướng tới Người dùng/Thiết bị/Bất thường/Thống kê/Cài đặt vẫn qua
+// AdminNav (đã có sẵn trên mọi trang /admin/*, xem admin/layout.tsx).
+// Nội dung y hệt /admin/de-xuat/page.tsx (giữ nguyên route đó luôn, không
+// xoá -- AdminNav vẫn còn mục "Duyệt đề xuất" trỏ tới, trùng nội dung
+// nhưng không hại gì).
+export default async function AdminIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ trangThai?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const trangThaiParam = params.trangThai;
+  const trangThaiFilter = trangThaiParam
+    ? Array.isArray(trangThaiParam)
+      ? trangThaiParam
+      : [trangThaiParam]
+    : undefined;
 
-export default function AdminIndexPage() {
+  const supabase = await createClient();
+  // RLS de_xuat_congviec_select tự giới hạn kết quả theo người gọi (chính
+  // người đề xuất, hoặc Admin có quyền duyệt đúng Nhóm/AdminM) -- không cần
+  // lọc gì thêm ở đây ngoài trangThai.
+  const items = await getDeXuatCongViecList(supabase, trangThaiFilter);
+
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold">Trang quản trị</h1>
-      <p className="mb-6 text-sm text-gray-500">Chọn một mục để quản lý bên dưới.</p>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {SECTIONS.map((s) => (
-          <Link
-            key={s.href}
-            href={s.href}
-            className="rounded-md border bg-white p-4 hover:border-blue-400 hover:shadow-sm"
-          >
-            <h2 className="font-medium text-gray-800">{s.title}</h2>
-            <p className="mt-1 text-sm text-gray-500">{s.desc}</p>
-          </Link>
-        ))}
-      </div>
+      <h1 className="mb-4 text-lg font-semibold tracking-tight text-gray-900">
+        Duyệt đề xuất sửa/xoá công việc
+      </h1>
+      <DeXuatCongViecList initialItems={items} />
     </div>
   );
 }

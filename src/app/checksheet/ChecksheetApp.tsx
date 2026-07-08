@@ -97,23 +97,26 @@ export function ChecksheetApp({
     vaiTro: string | null;
     xuong: string | null;
     kip: string | null;
+    nhom: string | null;
   };
   filterOptions: FilterOptions;
 }) {
   // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (áp dụng mọi role,
   // kể cả Admin/AdminM), người dùng vẫn tự do đổi lại sau đó. Nhân viên phụ
   // trách chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ
-  // trách ít nhất 1 thiết bị khớp Xưởng/Nhóm đã mặc định -- nếu không, mặc
-  // định về msnv sẽ lọc rỗng toàn bộ danh sách thiết bị (đa số user thường
-  // không phải nguoi_phu_trach của thiết bị nào).
+  // trách ít nhất 1 thiết bị khớp Xưởng/Kíp/Nhóm nhỏ đã mặc định -- nếu
+  // không, mặc định về msnv sẽ lọc rỗng toàn bộ danh sách thiết bị (đa số
+  // user thường không phải nguoi_phu_trach của thiết bị nào).
   const [xuong, setXuong] = useState(() => currentUser.xuong ?? "");
   const [kip, setKip] = useState(() => currentUser.kip ?? "");
+  const [nhom, setNhom] = useState(() => currentUser.nhom ?? "");
   const [nhanVienMsnv, setNhanVienMsnv] = useState(() => {
     if (!currentUser.msnv) return "";
     const isOwnerOfSomeDevice = filterOptions.thietBi.some(
       (tb) =>
         (!currentUser.xuong || tb.xuong === currentUser.xuong) &&
         (!currentUser.kip || tb.kip === currentUser.kip) &&
+        (!currentUser.nhom || tb.nhom === currentUser.nhom) &&
         tb.nguoiPhuTrach === currentUser.msnv,
     );
     return isOwnerOfSomeDevice ? currentUser.msnv : "";
@@ -171,16 +174,29 @@ export function ChecksheetApp({
     [thietBiAfterXuong, kip],
   );
 
+  const nhomOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(thietBiAfterKip.map((tb) => tb.nhom).filter((v): v is string => !!v)),
+      ).sort(),
+    [thietBiAfterKip],
+  );
+
+  const thietBiAfterNhom = useMemo(
+    () => thietBiAfterKip.filter((tb) => !nhom || tb.nhom === nhom),
+    [thietBiAfterKip, nhom],
+  );
+
   const nhanVienOptions = useMemo(() => {
     const msnvSet = new Set(
-      thietBiAfterKip.map((tb) => tb.nguoiPhuTrach).filter((v): v is string => !!v),
+      thietBiAfterNhom.map((tb) => tb.nguoiPhuTrach).filter((v): v is string => !!v),
     );
     return filterOptions.nhanVien.filter((display) => msnvSet.has(parseNhanVienMsnv(display)));
-  }, [thietBiAfterKip, filterOptions.nhanVien]);
+  }, [thietBiAfterNhom, filterOptions.nhanVien]);
 
   const thietBiAfterNhanVien = useMemo(
-    () => thietBiAfterKip.filter((tb) => !nhanVienMsnv || tb.nguoiPhuTrach === nhanVienMsnv),
-    [thietBiAfterKip, nhanVienMsnv],
+    () => thietBiAfterNhom.filter((tb) => !nhanVienMsnv || tb.nguoiPhuTrach === nhanVienMsnv),
+    [thietBiAfterNhom, nhanVienMsnv],
   );
 
   const selectedThietBi: ThietBiOption | undefined = thietBiAfterNhanVien.find(
@@ -198,12 +214,20 @@ export function ChecksheetApp({
   function handleXuongChange(value: string) {
     setXuong(value);
     setKip("");
+    setNhom("");
     setNhanVienMsnv("");
     setThietBiId("");
   }
 
   function handleKipChange(value: string) {
     setKip(value);
+    setNhom("");
+    setNhanVienMsnv("");
+    setThietBiId("");
+  }
+
+  function handleNhomChange(value: string) {
+    setNhom(value);
     setNhanVienMsnv("");
     setThietBiId("");
   }
@@ -601,7 +625,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
-          <label className={ui.label}>Nhóm</label>
+          <label className={ui.label}>Kíp</label>
           <select
             className={`w-full min-w-0 ${selectClass}`}
             value={kip}
@@ -611,6 +635,22 @@ export function ChecksheetApp({
             {kipOptions.map((k) => (
               <option key={k} value={k}>
                 {k}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+          <label className={ui.label}>Nhóm nhỏ</label>
+          <select
+            className={`w-full min-w-0 ${selectClass}`}
+            value={nhom}
+            onChange={(e) => handleNhomChange(e.target.value)}
+          >
+            <option value="">-- Tất cả --</option>
+            {nhomOptions.map((n) => (
+              <option key={n} value={n}>
+                {n}
               </option>
             ))}
           </select>
@@ -728,72 +768,98 @@ export function ChecksheetApp({
                     phóng to bên trái, khớp đúng cấu trúc mẫu giấy gốc --
                     CHỈ hiện khi in (`hidden print:flex`), độc lập với khối
                     thẻ tương tác bên dưới (ẩn khi in qua `no-print` -- màn
-                    hình vẫn giữ dạng thẻ hiện tại, chỉ bản in cần khớp mẫu). */}
-                <div className="hidden items-start gap-3 print:flex">
+                    hình vẫn giữ dạng thẻ hiện tại, chỉ bản in cần khớp mẫu).
+                    Ảnh + [bảng đầu trang + ChecksheetTable] nằm CHUNG 1 hàng
+                    flex (items-stretch mặc định) để ảnh tự căng đúng chiều
+                    cao TOÀN BỘ bảng hạng mục -- ChecksheetTable vì vậy phải
+                    render THÊM 1 lần riêng ở đây cho bản in (bản còn lại bên
+                    ngoài dành cho màn hình, ẩn khi in qua `print:hidden`). */}
+                <div className="hidden items-stretch gap-3 print:flex">
                   {selectedThietBi.anhUrl && selectedThietBi.anhUrl.trim() !== "" ? (
                     // eslint-disable-next-line @next/next/no-img-element -- ảnh Google Drive bên ngoài, chỉ dùng khi in
                     <img
                       src={toDriveImageSrc(selectedThietBi.anhUrl.trim())}
                       alt={`Sơ đồ thiết bị ${selectedThietBi.tenThietBi}`}
-                      className="h-48 w-64 shrink-0 border border-gray-400 object-contain"
+                      className="w-64 shrink-0 border border-gray-400 object-contain"
                     />
                   ) : null}
-                  <table className="flex-1 border-collapse border border-gray-400 text-center">
-                    <tbody>
-                      <tr>
-                        <th rowSpan={2} className="border border-gray-400 px-2 py-1 align-top">
-                          <div className="flex items-center gap-1.5">
-                            <AppLogo heightPx={20} />
-                            <div className="text-left">
-                              <p className="font-semibold">CHECKSHEET BƯỚC 3</p>
-                              <p className="font-normal">
-                                Ngày lập: {todayIso.split("-").reverse().join("/")}
-                              </p>
+                  <div className="flex flex-1 flex-col gap-3">
+                    <table className="border-collapse border border-gray-400 text-center">
+                      <tbody>
+                        <tr>
+                          <th rowSpan={2} className="border border-gray-400 px-2 py-1 align-top">
+                            <div className="flex items-center gap-1.5">
+                              <AppLogo heightPx={20} />
+                              <div className="text-left">
+                                <p className="font-semibold">CHECKSHEET BƯỚC 3</p>
+                                <p className="font-normal">
+                                  Ngày lập: {todayIso.split("-").reverse().join("/")}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-gray-400 px-2 py-1 text-left align-top font-normal"
-                        >
-                          <p>Nhóm nhỏ: {selectedThietBi.kip ?? ""}</p>
-                          <p>Cụm: {selectedThietBi.cum ?? ""}</p>
-                        </th>
-                        <th className="border border-gray-400 px-2 py-1">Phòng/xưởng</th>
-                        <th className="border border-gray-400 px-2 py-1">Khu vực</th>
-                        <th className="border border-gray-400 px-2 py-1">Tên thiết bị</th>
-                        <th className="border border-gray-400 px-2 py-1">Lãnh đạo xưởng</th>
-                        <th className="border border-gray-400 px-2 py-1">Trưởng ca</th>
-                        <th className="border border-gray-400 px-2 py-1">
-                          Kế hoạch / Thực tế
-                        </th>
-                      </tr>
-                      <tr>
-                        <td className="border border-gray-400 px-2 py-1 font-semibold">
-                          {selectedThietBi.xuong ?? ""}
-                        </td>
-                        <td className="border border-gray-400 px-2 py-1 font-semibold">
-                          {selectedThietBi.khuVuc ?? ""}
-                        </td>
-                        <td className="border border-gray-400 px-2 py-1 font-semibold">
-                          {selectedThietBi.tenThietBi}
-                        </td>
-                        <td className="border border-gray-400 px-2 py-1 font-semibold">
-                          {selectedThietBi.lanhDao ?? ""}
-                        </td>
-                        <td className="border border-gray-400 px-2 py-1 font-semibold">
-                          {selectedThietBi.truongCa ?? ""}
-                        </td>
-                        <td className="border border-gray-400 px-1 py-1">
-                          <div className="flex items-center justify-center gap-1">
-                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgY}`} />
-                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgG}`} />
-                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgR}`} />
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-gray-400 px-2 py-1 text-left align-top font-normal"
+                          >
+                            <p>Nhóm nhỏ: {selectedThietBi.nhom ?? ""}</p>
+                            <p>Cụm: {selectedThietBi.cum ?? ""}</p>
+                          </th>
+                          <th className="border border-gray-400 px-2 py-1">Phòng/xưởng</th>
+                          <th className="border border-gray-400 px-2 py-1">Khu vực</th>
+                          <th className="border border-gray-400 px-2 py-1">Tên thiết bị</th>
+                          <th className="border border-gray-400 px-2 py-1">Lãnh đạo xưởng</th>
+                          <th className="border border-gray-400 px-2 py-1">Trưởng ca</th>
+                          <th className="border border-gray-400 px-2 py-1">
+                            Kế hoạch / Thực tế
+                          </th>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-400 px-2 py-1 font-semibold">
+                            {selectedThietBi.xuong ?? ""}
+                          </td>
+                          <td className="border border-gray-400 px-2 py-1 font-semibold">
+                            {selectedThietBi.khuVuc ?? ""}
+                          </td>
+                          <td className="border border-gray-400 px-2 py-1 font-semibold">
+                            {selectedThietBi.tenThietBi}
+                          </td>
+                          <td className="border border-gray-400 px-2 py-1 font-semibold">
+                            {selectedThietBi.lanhDao ?? ""}
+                          </td>
+                          <td className="border border-gray-400 px-2 py-1 font-semibold">
+                            {selectedThietBi.truongCa ?? ""}
+                          </td>
+                          <td className="border border-gray-400 px-1 py-1">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgY}`} />
+                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgG}`} />
+                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgR}`} />
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <ChecksheetTable
+                      rows={rows}
+                      thucHien={gridState.cells}
+                      thangDau={thangDau}
+                      thangCuoi={thangCuoi}
+                      editability={editability}
+                      todayIso={todayIso}
+                      nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
+                      canManageCongViec={canManageDevice}
+                      pendingCongViecIds={pendingCongViecIds}
+                      onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
+                      onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
+                      onSetPlan={handleSetPlan}
+                      onSetAct={handleSetAct}
+                      onRequestBatThuong={handleRequestBatThuong}
+                      selectedDay={selectedDay}
+                      onSelectDay={handleSelectDay}
+                      onAutoFillPlan={autoFillPlan}
+                    />
+                  </div>
                 </div>
               <div className="no-print mb-3 rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -808,8 +874,9 @@ export function ChecksheetApp({
                       </p>
                     </div>
                   </div>
-                  <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-7">
-                    <InfoField label="Nhóm" value={selectedThietBi.kip} />
+                  <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-8">
+                    <InfoField label="Kíp" value={selectedThietBi.kip} />
+                    <InfoField label="Nhóm nhỏ" value={selectedThietBi.nhom} />
                     <InfoField label="Cụm" value={selectedThietBi.cum} />
                     <InfoField label="Phòng/Xưởng" value={selectedThietBi.xuong} />
                     <InfoField label="Khu vực" value={selectedThietBi.khuVuc} />
@@ -854,25 +921,30 @@ export function ChecksheetApp({
               </div>
               </>
             ) : null}
-            <ChecksheetTable
-              rows={rows}
-              thucHien={gridState.cells}
-              thangDau={thangDau}
-              thangCuoi={thangCuoi}
-              editability={editability}
-              todayIso={todayIso}
-              nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
-              canManageCongViec={canManageDevice}
-              pendingCongViecIds={pendingCongViecIds}
-              onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
-              onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
-              onSetPlan={handleSetPlan}
-              onSetAct={handleSetAct}
-              onRequestBatThuong={handleRequestBatThuong}
-              selectedDay={selectedDay}
-              onSelectDay={handleSelectDay}
-              onAutoFillPlan={autoFillPlan}
-            />
+            {/* Bản màn hình: ẩn khi in (print:hidden) -- bản in dùng bản
+                ChecksheetTable riêng bên trong khối hidden print:flex ở
+                trên, để ảnh thiết bị căng đúng chiều cao toàn bộ bảng. */}
+            <div className="print:hidden">
+              <ChecksheetTable
+                rows={rows}
+                thucHien={gridState.cells}
+                thangDau={thangDau}
+                thangCuoi={thangCuoi}
+                editability={editability}
+                todayIso={todayIso}
+                nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
+                canManageCongViec={canManageDevice}
+                pendingCongViecIds={pendingCongViecIds}
+                onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
+                onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
+                onSetPlan={handleSetPlan}
+                onSetAct={handleSetAct}
+                onRequestBatThuong={handleRequestBatThuong}
+                selectedDay={selectedDay}
+                onSelectDay={handleSelectDay}
+                onAutoFillPlan={autoFillPlan}
+              />
+            </div>
           </div>
         </>
       ) : (

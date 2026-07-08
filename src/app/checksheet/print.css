@@ -34,6 +34,15 @@
     overflow: visible !important;
   }
 
+  /* ChecksheetTable bọc bảng trong div riêng có class overflow-x-auto (để
+     cuộn ngang trên màn hình) -- rule .print-area{overflow:visible} ở trên
+     chỉ áp cho chính .print-area, KHÔNG áp cho div lồng bên trong này, nên
+     khi in bảng 31 cột ngày vẫn bị cuộn/cắt thay vì chảy tràn hết khổ giấy.
+     Ghi đè riêng cho đúng phần tử lồng đó. */
+  .print-area .overflow-x-auto {
+    overflow: visible !important;
+  }
+
   .print-area table {
     width: 100%;
     font-size: 9px;

@@ -8,11 +8,11 @@ export default async function AdminEquipmentPage() {
   } = await supabase.auth.getUser();
   const { data: items } = await supabase
     .from("thietbi")
-    .select("id, ma_thiet_bi, ten_thiet_bi, xuong, kip, khu_vuc, nguoi_phu_trach")
+    .select("id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nhom, khu_vuc, nguoi_phu_trach")
     .order("ma_thiet_bi");
   const { data: users } = await supabase.from("nguoidung").select("msnv, ho_ten").order("ho_ten");
   const { data: profile } = user
-    ? await supabase.from("nguoidung").select("msnv, xuong, kip").eq("id", user.id).maybeSingle()
+    ? await supabase.from("nguoidung").select("msnv, xuong, kip, nhom").eq("id", user.id).maybeSingle()
     : { data: null };
 
   return (
@@ -25,6 +25,7 @@ export default async function AdminEquipmentPage() {
           msnv: profile?.msnv ?? null,
           xuong: profile?.xuong ?? null,
           kip: profile?.kip ?? null,
+          nhom: profile?.nhom ?? null,
         }}
       />
     </div>

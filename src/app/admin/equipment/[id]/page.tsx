@@ -13,7 +13,7 @@ export default async function AdminEquipmentDetailPage({
   const { data: thietBi } = await supabase
     .from("thietbi")
     .select(
-      "id, ma_thiet_bi, ten_thiet_bi, cum, khu_vuc, xuong, kip, lanh_dao, truong_ca, nguoi_phu_trach",
+      "id, ma_thiet_bi, ten_thiet_bi, cum, khu_vuc, xuong, kip, nhom, lanh_dao, truong_ca, nguoi_phu_trach",
     )
     .eq("id", id)
     .maybeSingle();

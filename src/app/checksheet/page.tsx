@@ -20,7 +20,7 @@ export default async function ChecksheetPage() {
 
   const { data: profile } = await supabase
     .from("nguoidung")
-    .select("msnv, ho_ten, vai_tro, xuong, kip")
+    .select("msnv, ho_ten, vai_tro, xuong, kip, nhom")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -66,6 +66,7 @@ export default async function ChecksheetPage() {
             vaiTro: profile?.vai_tro ?? null,
             xuong: profile?.xuong ?? null,
             kip: profile?.kip ?? null,
+            nhom: profile?.nhom ?? null,
           }}
           filterOptions={filterOptions}
         />

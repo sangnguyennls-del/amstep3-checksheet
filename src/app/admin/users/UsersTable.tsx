@@ -17,6 +17,7 @@ export type UserRow = {
   don_vi: string | null;
   xuong: string | null;
   kip: string | null;
+  nhom: string | null;
   vai_tro: "user" | "admin" | "adminm" | null;
 };
 
@@ -84,8 +85,12 @@ function CreateUserForm({ currentUserVaiTro }: { currentUserVaiTro: "admin" | "a
             <input name="xuong" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={ui.label}>Nhóm</label>
+            <label className={ui.label}>Kíp</label>
             <input name="kip" className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Nhóm nhỏ</label>
+            <input name="nhom" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Vai trò</label>
@@ -142,8 +147,12 @@ function EditUserDialog({
             <input name="xuong" defaultValue={user.xuong ?? ""} className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={ui.label}>Nhóm</label>
+            <label className={ui.label}>Kíp</label>
             <input name="kip" defaultValue={user.kip ?? ""} className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Nhóm nhỏ</label>
+            <input name="nhom" defaultValue={user.nhom ?? ""} className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Vai trò</label>
@@ -212,6 +221,10 @@ function ResetPasswordDialog({ user, onClose }: { user: UserRow; onClose: () => 
   );
 }
 
+function uniqueSorted(values: (string | null)[]): string[] {
+  return Array.from(new Set(values.filter((v): v is string => !!v))).sort();
+}
+
 export function UsersTable({
   users,
   currentUserVaiTro,
@@ -223,6 +236,23 @@ export function UsersTable({
   const [resettingUser, setResettingUser] = useState<UserRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const [filterXuong, setFilterXuong] = useState("");
+  const [filterKip, setFilterKip] = useState("");
+  const [filterNhom, setFilterNhom] = useState("");
+  const [filterVaiTro, setFilterVaiTro] = useState("");
+
+  const xuongOptions = uniqueSorted(users.map((u) => u.xuong));
+  const kipOptions = uniqueSorted(users.map((u) => u.kip));
+  const nhomOptions = uniqueSorted(users.map((u) => u.nhom));
+
+  const filteredUsers = users.filter(
+    (u) =>
+      (!filterXuong || u.xuong === filterXuong) &&
+      (!filterKip || u.kip === filterKip) &&
+      (!filterNhom || u.nhom === filterNhom) &&
+      (!filterVaiTro || (u.vai_tro ?? "user") === filterVaiTro),
+  );
 
   function handleDelete(user: UserRow) {
     if (!confirm(`Xoá người dùng ${user.msnv} - ${user.ho_ten}? Hành động này không thể hoàn tác.`)) {
@@ -243,6 +273,51 @@ export function UsersTable({
 
       {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
+      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 ${ui.card}`}>
+        <div className="flex flex-col gap-1">
+          <label className={ui.label}>Xưởng</label>
+          <select value={filterXuong} onChange={(e) => setFilterXuong(e.target.value)} className={ui.input}>
+            <option value="">-- Tất cả --</option>
+            {xuongOptions.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={ui.label}>Kíp</label>
+          <select value={filterKip} onChange={(e) => setFilterKip(e.target.value)} className={ui.input}>
+            <option value="">-- Tất cả --</option>
+            {kipOptions.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={ui.label}>Nhóm nhỏ</label>
+          <select value={filterNhom} onChange={(e) => setFilterNhom(e.target.value)} className={ui.input}>
+            <option value="">-- Tất cả --</option>
+            {nhomOptions.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={ui.label}>Vai trò</label>
+          <select value={filterVaiTro} onChange={(e) => setFilterVaiTro(e.target.value)} className={ui.input}>
+            <option value="">-- Tất cả --</option>
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+            <option value="adminm">AdminM</option>
+          </select>
+        </div>
+      </div>
+
       <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
@@ -251,19 +326,21 @@ export function UsersTable({
               <th className="px-4 py-2.5">Họ tên</th>
               <th className="px-4 py-2.5">Đơn vị</th>
               <th className="px-4 py-2.5">Xưởng</th>
-              <th className="px-4 py-2.5">Nhóm</th>
+              <th className="px-4 py-2.5">Kíp</th>
+              <th className="px-4 py-2.5">Nhóm nhỏ</th>
               <th className="px-4 py-2.5">Vai trò</th>
               <th className="px-4 py-2.5">Hành động</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {filteredUsers.map((u) => (
               <tr key={u.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
                 <td className="px-4 py-2.5 font-medium text-gray-900">{u.msnv}</td>
                 <td className="px-4 py-2.5">{u.ho_ten}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.don_vi ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.xuong ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.kip ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">{u.nhom ?? ""}</td>
                 <td className="px-4 py-2.5">
                   <span
                     className={
@@ -305,10 +382,10 @@ export function UsersTable({
                 </td>
               </tr>
             ))}
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                  Chưa có người dùng nào.
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                  {users.length === 0 ? "Chưa có người dùng nào." : "Không có người dùng khớp bộ lọc."}
                 </td>
               </tr>
             ) : null}

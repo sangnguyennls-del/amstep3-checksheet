@@ -36,6 +36,7 @@ export async function createUser(
   const donVi = String(formData.get("donVi") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
   const kip = String(formData.get("kip") ?? "").trim();
+  const nhom = String(formData.get("nhom") ?? "").trim();
   const vaiTro = String(formData.get("vaiTro") ?? "").trim();
 
   if (!username || !password || !msnv || !hoTen) {
@@ -78,6 +79,7 @@ export async function createUser(
     don_vi: donVi || null,
     xuong: xuong || null,
     kip: kip || null,
+    nhom: nhom || null,
     // Việc 4: lưu song song với email suy ra ở trên (usernameToEmail) để
     // resolve_login_email (migration 0012) tra được -- không đổi cách sinh
     // email, chỉ thêm 1 cột đọc được cho luồng đăng nhập bằng MSNV/username.
@@ -111,6 +113,7 @@ export async function updateUser(
   const donVi = String(formData.get("donVi") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
   const kip = String(formData.get("kip") ?? "").trim();
+  const nhom = String(formData.get("nhom") ?? "").trim();
   const vaiTro = String(formData.get("vaiTro") ?? "").trim();
 
   if (!id || !hoTen) {
@@ -131,6 +134,7 @@ export async function updateUser(
       don_vi: donVi || null,
       xuong: xuong || null,
       kip: kip || null,
+      nhom: nhom || null,
       vai_tro: vaiTro || "user",
     })
     .eq("id", id);

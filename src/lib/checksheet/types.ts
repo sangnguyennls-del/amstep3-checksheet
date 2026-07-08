@@ -41,6 +41,7 @@ export function cellKey(congViecId: string, ngayIso: string): string {
 export type FilterOptions = {
   xuong: string[];
   kip: string[];
+  nhom: string[];
   // Mỗi phần tử định dạng "msnv - ho_ten" (hoặc chỉ "msnv" nếu chưa có hồ sơ
   // nguoidung tương ứng) để UI hiển thị đủ thông tin từ 1 mảng string phẳng
   // đúng theo shape đã chốt trong plan. Khi lọc thietBi theo nhân viên đã
@@ -53,6 +54,7 @@ export type FilterOptions = {
     tenThietBi: string;
     xuong: string;
     kip: string;
+    nhom: string | null;
     cum: string | null;
     khuVuc: string | null;
     lanhDao: string | null;

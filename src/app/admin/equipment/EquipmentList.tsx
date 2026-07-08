@@ -11,11 +11,17 @@ export type ThietBiRow = {
   ten_thiet_bi: string;
   xuong: string | null;
   kip: string | null;
+  nhom: string | null;
   khu_vuc: string | null;
   nguoi_phu_trach: string | null;
 };
 
-export type CurrentUserProfile = { msnv: string | null; xuong: string | null; kip: string | null };
+export type CurrentUserProfile = {
+  msnv: string | null;
+  xuong: string | null;
+  kip: string | null;
+  nhom: string | null;
+};
 
 export type NguoiDungOption = { msnv: string; ho_ten: string };
 
@@ -54,8 +60,12 @@ function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
             <input name="xuong" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
-            <label className={ui.label}>Nhóm</label>
+            <label className={ui.label}>Kíp</label>
             <input name="kip" className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Nhóm nhỏ</label>
+            <input name="nhom" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Lãnh đạo</label>
@@ -114,14 +124,15 @@ export function EquipmentList({
   const [isPending, startTransition] = useTransition();
   const nameByMsnv = new Map(users.map((u) => [u.msnv, u.ho_ten]));
 
-  // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Nhóm/Nhân
-  // viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
+  // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Kíp/Nhóm
+  // nhỏ/Nhân viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
   // initializer (không phải useEffect) để tránh lint set-state-in-effect.
   const [filterXuong, setFilterXuong] = useState(() => currentUser.xuong ?? "");
   const [filterKip, setFilterKip] = useState(() => currentUser.kip ?? "");
+  const [filterNhom, setFilterNhom] = useState(() => currentUser.nhom ?? "");
   const [filterKhuVuc, setFilterKhuVuc] = useState("");
   // Chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ trách ít
-  // nhất 1 thiết bị khớp Xưởng/Nhóm đã mặc định -- nếu không, mặc định về
+  // nhất 1 thiết bị khớp Xưởng/Kíp đã mặc định -- nếu không, mặc định về
   // msnv sẽ lọc rỗng toàn bộ danh sách (đa số Admin không đứng tên phụ trách
   // thiết bị nào).
   const [filterNguoiPhuTrach, setFilterNguoiPhuTrach] = useState(() => {
@@ -137,12 +148,14 @@ export function EquipmentList({
 
   const xuongOptions = uniqueSorted(items.map((i) => i.xuong));
   const kipOptions = uniqueSorted(items.map((i) => i.kip));
+  const nhomOptions = uniqueSorted(items.map((i) => i.nhom));
   const khuVucOptions = uniqueSorted(items.map((i) => i.khu_vuc));
 
   const filteredItems = items.filter(
     (item) =>
       (!filterXuong || item.xuong === filterXuong) &&
       (!filterKip || item.kip === filterKip) &&
+      (!filterNhom || item.nhom === filterNhom) &&
       (!filterKhuVuc || item.khu_vuc === filterKhuVuc) &&
       (!filterNguoiPhuTrach || item.nguoi_phu_trach === filterNguoiPhuTrach),
   );
@@ -170,7 +183,7 @@ export function EquipmentList({
 
       {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
-      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 ${ui.card}`}>
+      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${ui.card}`}>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Xưởng</label>
           <select value={filterXuong} onChange={(e) => setFilterXuong(e.target.value)} className={ui.input}>
@@ -183,12 +196,23 @@ export function EquipmentList({
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className={ui.label}>Nhóm</label>
+          <label className={ui.label}>Kíp</label>
           <select value={filterKip} onChange={(e) => setFilterKip(e.target.value)} className={ui.input}>
             <option value="">-- Tất cả --</option>
             {kipOptions.map((k) => (
               <option key={k} value={k}>
                 {k}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={ui.label}>Nhóm nhỏ</label>
+          <select value={filterNhom} onChange={(e) => setFilterNhom(e.target.value)} className={ui.input}>
+            <option value="">-- Tất cả --</option>
+            {nhomOptions.map((n) => (
+              <option key={n} value={n}>
+                {n}
               </option>
             ))}
           </select>
@@ -228,7 +252,8 @@ export function EquipmentList({
               <th className="px-4 py-2.5">Mã</th>
               <th className="px-4 py-2.5">Tên</th>
               <th className="px-4 py-2.5">Xưởng</th>
-              <th className="px-4 py-2.5">Nhóm</th>
+              <th className="px-4 py-2.5">Kíp</th>
+              <th className="px-4 py-2.5">Nhóm nhỏ</th>
               <th className="px-4 py-2.5">Người phụ trách</th>
               <th className="px-4 py-2.5">Hành động</th>
             </tr>
@@ -240,6 +265,7 @@ export function EquipmentList({
                 <td className="px-4 py-2.5">{item.ten_thiet_bi}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.xuong ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.kip ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">{item.nhom ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {item.nguoi_phu_trach
                     ? `${nameByMsnv.get(item.nguoi_phu_trach) ?? "?"} (${item.nguoi_phu_trach})`
@@ -264,7 +290,7 @@ export function EquipmentList({
             ))}
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   {items.length === 0 ? "Chưa có thiết bị nào." : "Không có thiết bị khớp bộ lọc."}
                 </td>
               </tr>

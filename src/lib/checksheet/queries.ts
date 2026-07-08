@@ -10,6 +10,7 @@ type ThietBiRow = {
   ten_thiet_bi: string;
   xuong: string | null;
   kip: string | null;
+  nhom: string | null;
   cum: string | null;
   khu_vuc: string | null;
   lanh_dao: string | null;
@@ -39,13 +40,13 @@ export function parseNhanVienMsnv(nhanVienDisplay: string): string {
 /**
  * SELECT toàn bộ `thietbi` (join `nguoidung` lấy `ho_ten` qua
  * `nguoi_phu_trach`), suy ra danh sách xưởng/kíp/nhân viên/thiết bị distinct
- * dùng cho bộ lọc cascading Xưởng -> Nhóm -> Nhân viên -> Thiết bị.
+ * dùng cho bộ lọc cascading Xưởng -> Kíp -> Nhóm nhỏ -> Nhân viên -> Thiết bị.
  */
 export async function getFilterOptions(supabase: SupabaseClient): Promise<FilterOptions> {
   const { data, error } = await supabase
     .from("thietbi")
     .select(
-      "id, ma_thiet_bi, ten_thiet_bi, xuong, kip, cum, khu_vuc, lanh_dao, truong_ca, nguoi_phu_trach, anh_url, nguoidung(ho_ten)",
+      "id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nhom, cum, khu_vuc, lanh_dao, truong_ca, nguoi_phu_trach, anh_url, nguoidung(ho_ten)",
     )
     .order("ma_thiet_bi");
 
@@ -59,6 +60,7 @@ export async function getFilterOptions(supabase: SupabaseClient): Promise<Filter
     tenThietBi: r.ten_thiet_bi,
     xuong: r.xuong ?? "",
     kip: r.kip ?? "",
+    nhom: r.nhom ?? null,
     cum: r.cum ?? null,
     khuVuc: r.khu_vuc ?? null,
     lanhDao: r.lanh_dao ?? null,
@@ -70,6 +72,7 @@ export async function getFilterOptions(supabase: SupabaseClient): Promise<Filter
 
   const xuong = distinct(rows.map((r) => r.xuong)).sort();
   const kip = distinct(rows.map((r) => r.kip)).sort();
+  const nhom = distinct(rows.map((r) => r.nhom)).sort();
 
   const nhanVien = distinct(
     rows
@@ -80,7 +83,7 @@ export async function getFilterOptions(supabase: SupabaseClient): Promise<Filter
       }),
   ).sort();
 
-  return { xuong, kip, nhanVien, thietBi };
+  return { xuong, kip, nhom, nhanVien, thietBi };
 }
 
 type CongViecJoinRow = {

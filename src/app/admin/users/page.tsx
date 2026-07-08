@@ -8,7 +8,7 @@ export default async function AdminUsersPage() {
   const supabase = await createClient();
   const { data: users } = await supabase
     .from("nguoidung")
-    .select("id, msnv, ho_ten, don_vi, xuong, kip, vai_tro")
+    .select("id, msnv, ho_ten, don_vi, xuong, kip, nhom, vai_tro")
     .order("msnv");
 
   return (
