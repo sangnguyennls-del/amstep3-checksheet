@@ -15,6 +15,8 @@ export type UserRow = {
   msnv: string;
   ho_ten: string;
   don_vi: string | null;
+  xuong: string | null;
+  kip: string | null;
   vai_tro: "user" | "admin" | "adminm" | null;
 };
 
@@ -78,6 +80,14 @@ function CreateUserForm({ currentUserVaiTro }: { currentUserVaiTro: "admin" | "a
             <input name="donVi" className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
+            <label className={ui.label}>Xưởng</label>
+            <input name="xuong" className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Nhóm</label>
+            <input name="kip" className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
             <label className={ui.label}>Vai trò</label>
             <RoleSelect name="vaiTro" defaultValue="user" currentUserVaiTro={currentUserVaiTro} />
           </div>
@@ -126,6 +136,14 @@ function EditUserDialog({
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Đơn vị</label>
             <input name="donVi" defaultValue={user.don_vi ?? ""} className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Xưởng</label>
+            <input name="xuong" defaultValue={user.xuong ?? ""} className={ui.input} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Nhóm</label>
+            <input name="kip" defaultValue={user.kip ?? ""} className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Vai trò</label>
@@ -232,6 +250,8 @@ export function UsersTable({
               <th className="px-4 py-2.5">MSNV</th>
               <th className="px-4 py-2.5">Họ tên</th>
               <th className="px-4 py-2.5">Đơn vị</th>
+              <th className="px-4 py-2.5">Xưởng</th>
+              <th className="px-4 py-2.5">Nhóm</th>
               <th className="px-4 py-2.5">Vai trò</th>
               <th className="px-4 py-2.5">Hành động</th>
             </tr>
@@ -242,6 +262,8 @@ export function UsersTable({
                 <td className="px-4 py-2.5 font-medium text-gray-900">{u.msnv}</td>
                 <td className="px-4 py-2.5">{u.ho_ten}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.don_vi ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">{u.xuong ?? ""}</td>
+                <td className="px-4 py-2.5 text-gray-600">{u.kip ?? ""}</td>
                 <td className="px-4 py-2.5">
                   <span
                     className={
@@ -285,7 +307,7 @@ export function UsersTable({
             ))}
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   Chưa có người dùng nào.
                 </td>
               </tr>

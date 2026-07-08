@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { usernameToEmail } from "@/lib/auth/username";
 
 export type LoginState = {
   error: string | null;
@@ -14,17 +13,26 @@ export type LoginState = {
 // -- mọi ghi dữ liệu thật vẫn được RLS/can_edit_* chặn độc lập nếu phiên
 // đăng nhập cũ còn sót lại lúc bật bảo trì giữa chừng.
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
-  const username = String(formData.get("username") ?? "").trim();
+  const identifier = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!username || !password) {
+  if (!identifier || !password) {
     return { error: "Vui lòng nhập đầy đủ tài khoản và mật khẩu" };
   }
 
   const supabase = await createClient();
 
+  // Việc 4: cho đăng nhập bằng MSNV hoặc username -- resolve_login_email
+  // (migration 0012) tra ra email thật tương ứng, luôn trả về 1 email hợp
+  // lệ cú pháp kể cả khi không khớp ai (không tiết lộ tài khoản tồn tại
+  // hay không qua bước này -- signInWithPassword mới là nơi phát tín hiệu
+  // đúng/sai, giống hệt nhau cho "không có tài khoản" và "sai mật khẩu").
+  const { data: resolvedEmail } = await supabase.rpc("resolve_login_email", {
+    p_identifier: identifier,
+  });
+
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-    email: usernameToEmail(username),
+    email: resolvedEmail ?? identifier,
     password,
   });
 

@@ -18,6 +18,10 @@ export type EditCongViecResult = {
   thoiGian: number | null;
   tanSuatChu: string | null;
   tanSuatSo: number | null;
+  // Việc 2: true nếu Admin/AdminM tự sửa (áp dụng ngay); false nếu người
+  // phụ trách (không phải admin) vừa tạo 1 đề xuất "Chờ duyệt" -- công việc
+  // CHƯA đổi, ChecksheetApp sẽ không mutate rows và chỉ đánh dấu pending.
+  applied: boolean;
 };
 
 /**
@@ -81,8 +85,12 @@ export function EditCongViecModal({
     try {
       const supabase = createClient();
       if (mode === "remove") {
-        const { error: rpcError } = await supabase.rpc("remove_congviec_with_reason", {
+        const { data, error: rpcError } = await supabase.rpc("propose_congviec_change", {
           p_congviec_id: target.congViecId,
+          p_loai_de_xuat: "loai_bo",
+          p_thoi_gian: null,
+          p_tan_suat_chu: null,
+          p_tan_suat_so: null,
           p_ly_do: lyDo.trim(),
         });
         if (rpcError) throw rpcError;
@@ -92,6 +100,7 @@ export function EditCongViecModal({
           thoiGian: target.thoiGian,
           tanSuatChu: target.tanSuatChu,
           tanSuatSo: target.tanSuatSo,
+          applied: !!data?.applied,
         });
       } else {
         const thoiGianNum = thoiGian.trim() ? Number(thoiGian) : null;
@@ -102,8 +111,9 @@ export function EditCongViecModal({
           setSubmitting(false);
           return;
         }
-        const { error: rpcError } = await supabase.rpc("update_congviec_with_reason", {
+        const { data, error: rpcError } = await supabase.rpc("propose_congviec_change", {
           p_congviec_id: target.congViecId,
+          p_loai_de_xuat: "sua",
           p_thoi_gian: thoiGianNum,
           p_tan_suat_chu: tanSuatChu.trim() || null,
           p_tan_suat_so: tanSuatSoNum,
@@ -116,6 +126,7 @@ export function EditCongViecModal({
           thoiGian: thoiGianNum,
           tanSuatChu: tanSuatChu.trim() || null,
           tanSuatSo: tanSuatSoNum,
+          applied: !!data?.applied,
         });
       }
     } catch (e) {

@@ -9,6 +9,7 @@ import { CHECKSHEET_SAVED_EVENT } from "@/lib/checksheet/notifications";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { ui } from "@/lib/ui";
+import { AppLogo } from "@/components/AppLogo";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
 import { BatThuongModal } from "./BatThuongModal";
 import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
@@ -90,12 +91,33 @@ export function ChecksheetApp({
   currentUser,
   filterOptions,
 }: {
-  currentUser: { msnv: string | null; hoTen: string; vaiTro: string | null };
+  currentUser: {
+    msnv: string | null;
+    hoTen: string;
+    vaiTro: string | null;
+    xuong: string | null;
+    kip: string | null;
+  };
   filterOptions: FilterOptions;
 }) {
-  const [xuong, setXuong] = useState("");
-  const [kip, setKip] = useState("");
-  const [nhanVienMsnv, setNhanVienMsnv] = useState("");
+  // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (áp dụng mọi role,
+  // kể cả Admin/AdminM), người dùng vẫn tự do đổi lại sau đó. Nhân viên phụ
+  // trách chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ
+  // trách ít nhất 1 thiết bị khớp Xưởng/Nhóm đã mặc định -- nếu không, mặc
+  // định về msnv sẽ lọc rỗng toàn bộ danh sách thiết bị (đa số user thường
+  // không phải nguoi_phu_trach của thiết bị nào).
+  const [xuong, setXuong] = useState(() => currentUser.xuong ?? "");
+  const [kip, setKip] = useState(() => currentUser.kip ?? "");
+  const [nhanVienMsnv, setNhanVienMsnv] = useState(() => {
+    if (!currentUser.msnv) return "";
+    const isOwnerOfSomeDevice = filterOptions.thietBi.some(
+      (tb) =>
+        (!currentUser.xuong || tb.xuong === currentUser.xuong) &&
+        (!currentUser.kip || tb.kip === currentUser.kip) &&
+        tb.nguoiPhuTrach === currentUser.msnv,
+    );
+    return isOwnerOfSomeDevice ? currentUser.msnv : "";
+  });
   const [thietBiId, setThietBiId] = useState("");
   const [monthValue, setMonthValue] = useState(defaultMonthValue());
 
@@ -125,6 +147,10 @@ export function ChecksheetApp({
     mode: "edit" | "remove";
     target: EditCongViecTarget;
   } | null>(null);
+  // Việc 2: congViecId nào đang có đề xuất "Chờ duyệt" -- ẩn nút Sửa/Xoá +
+  // hiện badge cho dòng đó (tránh đề xuất trùng), tải lại mỗi khi load
+  // checksheet hoặc ngay sau khi 1 đề xuất mới được tạo.
+  const [pendingCongViecIds, setPendingCongViecIds] = useState<Set<string>>(new Set());
 
   // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn, thu hẹp
   // kip/nhanVien theo xuong đã chọn -- đúng thuật toán hệ cũ (App.applyFilters
@@ -187,6 +213,24 @@ export function ChecksheetApp({
     setThietBiId("");
   }
 
+  // Việc 2: nạp lại danh sách congViecId đang "Chờ duyệt" -- RLS
+  // (de_xuat_congviec_select) tự giới hạn kết quả theo người gọi (chính
+  // người đề xuất hoặc Admin có quyền duyệt Nhóm đó), nên không cần lọc gì
+  // thêm ở client ngoài .in(congViecIds) để giới hạn đúng phạm vi đang xem.
+  async function refreshPendingCongViec(congViecIds: string[]) {
+    if (congViecIds.length === 0) {
+      setPendingCongViecIds(new Set());
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("de_xuat_congviec")
+      .select("congviec_id")
+      .eq("trang_thai", "Chờ duyệt")
+      .in("congviec_id", congViecIds);
+    setPendingCongViecIds(new Set((data ?? []).map((r) => r.congviec_id as string)));
+  }
+
   async function handleLoad() {
     if (!thietBiId || !monthValue) return;
     setLoading(true);
@@ -204,6 +248,7 @@ export function ChecksheetApp({
         // tự suy luận lại quy tắc diff tháng/lock-date/device-lock ở client --
         // đây là nguồn chân lý duy nhất (xem editability.ts).
         getEditability(supabase, congViecIds, thangDau),
+        refreshPendingCongViec(congViecIds),
       ]);
       setRows(congViecRows);
       dispatch({ type: "load", cells: map });
@@ -284,6 +329,14 @@ export function ChecksheetApp({
   // hành vi loại bỏ mềm -- dòng biến mất khỏi checksheet dù DB vẫn còn
   // active=false, xem docstring RPC).
   function handleEditCongViecSuccess(result: EditCongViecResult) {
+    if (!result.applied) {
+      // Việc 2: người phụ trách (không phải admin) vừa tạo đề xuất "Chờ
+      // duyệt" -- công việc CHƯA đổi thật sự, chỉ đánh dấu pending để hiện
+      // badge + ẩn nút Sửa/Xoá (tránh đề xuất trùng), không mutate `rows`.
+      setPendingCongViecIds((prev) => new Set(prev).add(result.congViecId));
+      setEditTarget(null);
+      return;
+    }
     if (result.mode === "remove") {
       setRows((prev) => prev.filter((r) => r.congViecId !== result.congViecId));
     } else {
@@ -548,7 +601,7 @@ export function ChecksheetApp({
         </div>
 
         <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
-          <label className={ui.label}>Kíp</label>
+          <label className={ui.label}>Nhóm</label>
           <select
             className={`w-full min-w-0 ${selectClass}`}
             value={kip}
@@ -673,9 +726,7 @@ export function ChecksheetApp({
               <div className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#0066cc] text-xs font-bold text-white">
-                      AM
-                    </div>
+                    <AppLogo heightPx={40} />
                     <div>
                       <p className="text-sm font-semibold tracking-tight text-gray-900">
                         CHECKSHEET BƯỚC 3
@@ -686,7 +737,7 @@ export function ChecksheetApp({
                     </div>
                   </div>
                   <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-7">
-                    <InfoField label="Nhóm nhỏ (Kíp)" value={selectedThietBi.kip} />
+                    <InfoField label="Nhóm" value={selectedThietBi.kip} />
                     <InfoField label="Cụm" value={selectedThietBi.cum} />
                     <InfoField label="Phòng/Xưởng" value={selectedThietBi.xuong} />
                     <InfoField label="Khu vực" value={selectedThietBi.khuVuc} />
@@ -739,6 +790,7 @@ export function ChecksheetApp({
               todayIso={todayIso}
               nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
               canManageCongViec={canManageDevice}
+              pendingCongViecIds={pendingCongViecIds}
               onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
               onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
               onSetPlan={handleSetPlan}

@@ -58,7 +58,7 @@ export function StatsTable({
     });
   }, [initialRows, kip, nhanVien, trangThai]);
 
-  // Hàng đợi in hàng loạt (Task 3): dùng LẠI các bộ lọc Kíp/Nhân viên đang áp
+  // Hàng đợi in hàng loạt (Task 3): dùng LẠI các bộ lọc Nhóm/Nhân viên đang áp
   // dụng ở bảng, nhưng ÉP BUỘC status="Đã cập nhật" bất kể người dùng đang
   // chọn Trạng thái gì ở bảng hiển thị -- đúng hành vi hệ cũ (chỉ in thiết bị
   // đã cập nhật kế hoạch, xem CLAUDE.md/bối cảnh Task 3).
@@ -94,7 +94,7 @@ export function StatsTable({
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-gray-600">
-          Kíp
+          Nhóm
           <select value={kip} onChange={(e) => setKip(e.target.value)} className={ui.input}>
             <option value={ALL}>Tất cả</option>
             {kipList.map((k) => (
@@ -134,7 +134,7 @@ export function StatsTable({
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
               <th className="px-3 py-2.5">Xưởng</th>
-              <th className="px-3 py-2.5">Kíp</th>
+              <th className="px-3 py-2.5">Nhóm</th>
               <th className="px-3 py-2.5">Nhân viên</th>
               <th className="px-3 py-2.5">Thiết bị</th>
               <th className="px-3 py-2.5">Số lượng công việc</th>

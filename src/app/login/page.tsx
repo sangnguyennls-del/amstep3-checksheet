@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "./LoginForm";
+import { AppLogo } from "@/components/AppLogo";
 
 export default async function LoginPage() {
   const supabase = await createClient();
@@ -16,9 +17,7 @@ export default async function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-[#0066cc]/5 px-4">
       <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm shadow-[#0066cc]/5">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#0066cc] text-lg font-semibold tracking-tight text-white">
-            AM
-          </div>
+          <AppLogo heightPx={44} />
           <h1 className="text-lg font-semibold tracking-tight text-gray-900">
             Checksheet AM Bước 3
           </h1>

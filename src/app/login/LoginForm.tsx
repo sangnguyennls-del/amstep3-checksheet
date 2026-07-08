@@ -13,7 +13,7 @@ export function LoginForm() {
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="username" className={ui.label}>
-          Tài khoản
+          MSNV hoặc tên đăng nhập
         </label>
         <input
           id="username"

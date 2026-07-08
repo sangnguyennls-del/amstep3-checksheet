@@ -18,6 +18,8 @@ import "@/app/checksheet/print.css";
 
 type PrintDevice = { thietBiId: string; tenThietBi: string };
 
+const EMPTY_PENDING_SET = new Set<string>();
+
 // Dự phòng cho `window.onafterprint` không bao giờ fire (một số trình
 // duyệt/chế độ không phát sự kiện này đáng tin cậy) -- tránh treo hàng đợi
 // vĩnh viễn. Cải tiến so với hệ cũ GAS (setTimeout mù 500ms cố định, không
@@ -63,7 +65,7 @@ export function BatchPrint({
 
   // Fix review Task 3 (Important #2): banner tiến trình trước đây đọc thẳng
   // từ prop `devices` (đọc theo render HIỆN TẠI) để suy ra "thiết bị đang
-  // in" -- nếu người dùng đổi bộ lọc Kíp/Nhân viên ở StatsTable trong lúc
+  // in" -- nếu người dùng đổi bộ lọc Nhóm/Nhân viên ở StatsTable trong lúc
   // hàng đợi đang chạy, `devices` đổi theo nhưng vòng lặp `handleClick` vẫn
   // in đúng theo danh sách CŨ (biến cục bộ đóng trong closure) -- banner sẽ
   // hiện SAI tên thiết bị (hoặc mất hẳn nếu index vượt quá mảng mới). Chụp
@@ -203,6 +205,7 @@ export function BatchPrint({
             nguoiPhuTrachTen={null}
             // In hàng loạt chỉ để xem/in, không sửa -- ẩn hẳn cột "Thao tác".
             canManageCongViec={false}
+            pendingCongViecIds={EMPTY_PENDING_SET}
             onEditCongViec={() => {}}
             onRemoveCongViec={() => {}}
             onSetPlan={() => {}}

@@ -6,6 +6,7 @@ import { getFilterOptions } from "@/lib/checksheet/queries";
 import { ui } from "@/lib/ui";
 import { ChecksheetApp } from "./ChecksheetApp";
 import { NotificationBell } from "./NotificationBell";
+import { AppLogo } from "@/components/AppLogo";
 
 export default async function ChecksheetPage() {
   const supabase = await createClient();
@@ -19,7 +20,7 @@ export default async function ChecksheetPage() {
 
   const { data: profile } = await supabase
     .from("nguoidung")
-    .select("msnv, ho_ten, vai_tro")
+    .select("msnv, ho_ten, vai_tro, xuong, kip")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -31,9 +32,7 @@ export default async function ChecksheetPage() {
       <header className="no-print sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#0066cc] text-xs font-semibold text-white">
-              AM
-            </div>
+            <AppLogo heightPx={32} />
             <h1 className="text-base font-semibold tracking-tight whitespace-nowrap text-gray-900">
               <span className="hidden sm:inline">Checksheet AM Bước 3</span>
               <span className="sm:hidden">AM Bước 3</span>
@@ -65,6 +64,8 @@ export default async function ChecksheetPage() {
             msnv: profile?.msnv ?? null,
             hoTen: profile?.ho_ten ?? user.email ?? "",
             vaiTro: profile?.vai_tro ?? null,
+            xuong: profile?.xuong ?? null,
+            kip: profile?.kip ?? null,
           }}
           filterOptions={filterOptions}
         />

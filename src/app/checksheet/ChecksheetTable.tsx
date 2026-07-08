@@ -123,6 +123,7 @@ export function ChecksheetTable({
   todayIso,
   nguoiPhuTrachTen,
   canManageCongViec,
+  pendingCongViecIds,
   onEditCongViec,
   onRemoveCongViec,
   onSetPlan,
@@ -149,6 +150,9 @@ export function ChecksheetTable({
   /** Việc C: gợi ý UI cho cột "Thao tác" (Sửa/Loại bỏ) -- CHỈ ẩn/hiện, quyền
    * thật do RPC `can_manage_congviec` quyết định (xem EditCongViecModal.tsx). */
   canManageCongViec: boolean;
+  /** Việc 2: congViecId đang có đề xuất "Chờ duyệt" -- ẩn nút Sửa/Xoá + hiện
+   * badge cho dòng đó, tránh tạo đề xuất trùng trong lúc chờ Admin duyệt. */
+  pendingCongViecIds: Set<string>;
   onEditCongViec: (row: CongViecRow) => void;
   onRemoveCongViec: (row: CongViecRow) => void;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
@@ -336,7 +340,14 @@ export function ChecksheetTable({
                   </div>
                 </td>
                 <td className="no-print border border-gray-200 px-1 py-1 text-center">
-                  {canManageCongViec ? (
+                  {pendingCongViecIds.has(row.congViecId) ? (
+                    <span
+                      className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                      title="Đề xuất đang chờ Admin duyệt"
+                    >
+                      Chờ duyệt
+                    </span>
+                  ) : canManageCongViec ? (
                     <div className="flex justify-center gap-1">
                       <button
                         type="button"

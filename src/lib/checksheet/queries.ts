@@ -39,7 +39,7 @@ export function parseNhanVienMsnv(nhanVienDisplay: string): string {
 /**
  * SELECT toàn bộ `thietbi` (join `nguoidung` lấy `ho_ten` qua
  * `nguoi_phu_trach`), suy ra danh sách xưởng/kíp/nhân viên/thiết bị distinct
- * dùng cho bộ lọc cascading Xưởng -> Kíp -> Nhân viên -> Thiết bị.
+ * dùng cho bộ lọc cascading Xưởng -> Nhóm -> Nhân viên -> Thiết bị.
  */
 export async function getFilterOptions(supabase: SupabaseClient): Promise<FilterOptions> {
   const { data, error } = await supabase

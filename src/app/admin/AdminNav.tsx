@@ -8,6 +8,7 @@ const links = [
   { href: "/admin/users", label: "Người dùng" },
   { href: "/admin/equipment", label: "Thiết bị" },
   { href: "/admin/bat-thuong", label: "Bất thường" },
+  { href: "/admin/de-xuat", label: "Duyệt đề xuất" },
   { href: "/admin/stats", label: "Thống kê" },
   { href: "/admin/settings", label: "Cài đặt" },
 ];

@@ -92,7 +92,7 @@ function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiD
         <input name="xuong" defaultValue={thietBi.xuong ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">
-        <label className={ui.label}>Kíp</label>
+        <label className={ui.label}>Nhóm</label>
         <input name="kip" defaultValue={thietBi.kip ?? ""} className={inputClass()} />
       </div>
       <div className="flex flex-col gap-1">

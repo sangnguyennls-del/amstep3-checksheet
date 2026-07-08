@@ -19,7 +19,7 @@ const SECTIONS = [
   {
     href: "/admin/stats",
     title: "Thống kê",
-    desc: "Tỉ lệ hoàn thành Plan theo thiết bị, lọc theo Kíp/Nhân viên/Trạng thái",
+    desc: "Tỉ lệ hoàn thành Plan theo thiết bị, lọc theo Nhóm/Nhân viên/Trạng thái",
   },
   {
     href: "/admin/settings",
