@@ -9,8 +9,6 @@ export type EquipmentActionState = {
   success?: boolean;
 };
 
-const initialOk: EquipmentActionState = { error: null };
-
 function friendlyFkError(message: string): string {
   if (message.includes("violates foreign key constraint")) {
     return "MSNV người phụ trách không tồn tại trong hệ thống";
@@ -367,5 +365,3 @@ export async function deleteCongViec(
   revalidatePath(`/admin/equipment/${thietBiId}`);
   return { error: null };
 }
-
-export const equipmentInitialState = initialOk;

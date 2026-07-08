@@ -9,8 +9,6 @@ export type SettingsActionState = {
   success?: boolean;
 };
 
-const initialOk: SettingsActionState = { error: null };
-
 // Checkbox HTML không gửi field nếu bị bỏ tick -- phải map "có mặt trong
 // formData" thành "true" và "vắng mặt" thành "false", KHÔNG được bỏ qua
 // việc cập nhật field đó.
@@ -65,5 +63,3 @@ export async function updateSettings(
   revalidatePath("/admin/settings");
   return { error: null, success: true };
 }
-
-export const settingsInitialState = initialOk;

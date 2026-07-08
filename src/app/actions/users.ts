@@ -11,8 +11,6 @@ export type UserActionState = {
   success?: boolean;
 };
 
-const initialOk: UserActionState = { error: null };
-
 function friendlyRoleGuardError(message: string): string {
   if (message.includes("Chỉ AdminM")) {
     return "Chỉ AdminM mới được cấp quyền AdminM cho người khác.";
@@ -198,5 +196,3 @@ export async function resetUserPassword(
 
   return { error: null, success: true };
 }
-
-export const usersInitialState = initialOk;
