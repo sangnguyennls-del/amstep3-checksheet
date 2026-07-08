@@ -723,7 +723,79 @@ export function ChecksheetApp({
               trong khối này). */}
           <div className="print-area">
             {selectedThietBi ? (
-              <div className="mb-3 rounded-lg border border-gray-200 bg-white p-4">
+              <>
+                {/* Bản in: khối đầu trang dạng bảng có viền + ảnh thiết bị
+                    phóng to bên trái, khớp đúng cấu trúc mẫu giấy gốc --
+                    CHỈ hiện khi in (`hidden print:flex`), độc lập với khối
+                    thẻ tương tác bên dưới (ẩn khi in qua `no-print` -- màn
+                    hình vẫn giữ dạng thẻ hiện tại, chỉ bản in cần khớp mẫu). */}
+                <div className="hidden items-start gap-3 print:flex">
+                  {selectedThietBi.anhUrl && selectedThietBi.anhUrl.trim() !== "" ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- ảnh Google Drive bên ngoài, chỉ dùng khi in
+                    <img
+                      src={toDriveImageSrc(selectedThietBi.anhUrl.trim())}
+                      alt={`Sơ đồ thiết bị ${selectedThietBi.tenThietBi}`}
+                      className="h-48 w-64 shrink-0 border border-gray-400 object-contain"
+                    />
+                  ) : null}
+                  <table className="flex-1 border-collapse border border-gray-400 text-center">
+                    <tbody>
+                      <tr>
+                        <th rowSpan={2} className="border border-gray-400 px-2 py-1 align-top">
+                          <div className="flex items-center gap-1.5">
+                            <AppLogo heightPx={20} />
+                            <div className="text-left">
+                              <p className="font-semibold">CHECKSHEET BƯỚC 3</p>
+                              <p className="font-normal">
+                                Ngày lập: {todayIso.split("-").reverse().join("/")}
+                              </p>
+                            </div>
+                          </div>
+                        </th>
+                        <th
+                          rowSpan={2}
+                          className="border border-gray-400 px-2 py-1 text-left align-top font-normal"
+                        >
+                          <p>Nhóm nhỏ: {selectedThietBi.kip ?? ""}</p>
+                          <p>Cụm: {selectedThietBi.cum ?? ""}</p>
+                        </th>
+                        <th className="border border-gray-400 px-2 py-1">Phòng/xưởng</th>
+                        <th className="border border-gray-400 px-2 py-1">Khu vực</th>
+                        <th className="border border-gray-400 px-2 py-1">Tên thiết bị</th>
+                        <th className="border border-gray-400 px-2 py-1">Lãnh đạo xưởng</th>
+                        <th className="border border-gray-400 px-2 py-1">Trưởng ca</th>
+                        <th className="border border-gray-400 px-2 py-1">
+                          Kế hoạch / Thực tế
+                        </th>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-400 px-2 py-1 font-semibold">
+                          {selectedThietBi.xuong ?? ""}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 font-semibold">
+                          {selectedThietBi.khuVuc ?? ""}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 font-semibold">
+                          {selectedThietBi.tenThietBi}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 font-semibold">
+                          {selectedThietBi.lanhDao ?? ""}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1 font-semibold">
+                          {selectedThietBi.truongCa ?? ""}
+                        </td>
+                        <td className="border border-gray-400 px-1 py-1">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgY}`} />
+                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgG}`} />
+                            <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgR}`} />
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              <div className="no-print mb-3 rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <AppLogo heightPx={40} />
@@ -780,6 +852,7 @@ export function ChecksheetApp({
                   </span>
                 </div>
               </div>
+              </>
             ) : null}
             <ChecksheetTable
               rows={rows}

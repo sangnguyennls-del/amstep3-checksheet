@@ -304,7 +304,17 @@ export function ChecksheetTable({
                   </>
                 ) : null}
                 <td className="border border-gray-200 px-2 py-1">{row.loaiHoatDong}</td>
-                <td className="border border-gray-200 px-2 py-1">{nguoiPhuTrachTen ?? ""}</td>
+                {idx === 0 ? (
+                  // Đúng mẫu giấy: "Người chịu trách nhiệm" là 1 người/1 thiết
+                  // bị (không đổi theo từng dòng) -- gộp thành 1 ô duy nhất
+                  // span hết bảng thay vì lặp lại mỗi dòng.
+                  <td
+                    className="border border-gray-200 px-2 py-1 text-center align-middle"
+                    rowSpan={rows.length}
+                  >
+                    {nguoiPhuTrachTen ?? ""}
+                  </td>
+                ) : null}
                 <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
                   {row.thoiGian ?? ""}
                 </td>
