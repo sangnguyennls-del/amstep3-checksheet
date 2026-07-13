@@ -141,7 +141,15 @@ export function Cell({
         : undefined;
 
   return (
-    <div ref={ref} className={styles.dayCell} onPointerDown={handlePointerDown} onPointerEnter={handlePointerEnter}>
+    // `day-cell` là class GLOBAL (không hash) để print.css thu nhỏ ô trong
+    // bản in (.print-sheet) -- CSS module .dayCell có min-width 32px cứng
+    // từng khiến bảng in không co lại được (bị cắt ở ~cột ngày 25).
+    <div
+      ref={ref}
+      className={`${styles.dayCell} day-cell`}
+      onPointerDown={handlePointerDown}
+      onPointerEnter={handlePointerEnter}
+    >
       <div className={`${styles.triPlan} ${planClass(value.keHoach)}`} />
       <div className={actClassName} title={actTitle} />
     </div>

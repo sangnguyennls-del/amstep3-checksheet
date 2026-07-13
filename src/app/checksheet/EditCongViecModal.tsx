@@ -35,8 +35,11 @@ export type EditCongViecResult = {
  * thời gian/tần suất hoặc loại bỏ hạng mục phải truy vết được) -- validate ở
  * client trước (UX), RPC vẫn tự chặn lại nếu nhận chuỗi rỗng.
  *
- * "Loại bỏ" gọi `remove_congviec_with_reason` -- loại bỏ MỀM (active=false +
- * ngay_loai_bo), KHÔNG xoá cứng, đúng cơ chế đã có sẵn trong CLAUDE.md mục C.
+ * Mục 1 (migration 0016): CẢ 2 chế độ đều có hiệu lực từ ĐẦU THÁNG SAU thời
+ * điểm áp dụng (admin sửa ngay, hoặc lúc đề xuất được duyệt) -- "Loại bỏ"
+ * đóng hieu_luc_den = cuối tháng (KHÔNG xoá dữ liệu, giữ lịch sử để tính giờ
+ * tiết kiệm); "Sửa" tạo phiên bản kế nhiệm hiệu lực từ tháng sau, tháng
+ * này/tháng cũ vẫn hiện giá trị cũ.
  */
 export function EditCongViecModal({
   open,
@@ -187,6 +190,10 @@ export function EditCongViecModal({
                   />
                 </div>
               </div>
+              <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                Giá trị mới sẽ áp dụng từ đầu tháng sau -- checksheet tháng này và các tháng
+                trước vẫn giữ giá trị cũ.
+              </p>
             </>
           ) : (
             <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">

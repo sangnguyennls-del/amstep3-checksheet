@@ -8,17 +8,16 @@
 // `editability` của ChecksheetTable) -- KHÔNG viết component bảng mới.
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getCongViecRows, getThucHien } from "@/lib/checksheet/queries";
+import { getCongViecRows, getThietBiInfo, getThucHien } from "@/lib/checksheet/queries";
 import { monthRange } from "@/app/checksheet/ChecksheetApp";
-import { ChecksheetTable } from "@/app/checksheet/ChecksheetTable";
+import { PrintSheet, type PrintThietBi } from "@/app/checksheet/PrintSheet";
+import { buildPrintTitle, fitPrintSheetToPage } from "@/app/checksheet/printFit";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import type { CongViecRow, ThucHienMap } from "@/lib/checksheet/types";
 import { ui } from "@/lib/ui";
 import "@/app/checksheet/print.css";
 
 type PrintDevice = { thietBiId: string; tenThietBi: string };
-
-const EMPTY_PENDING_SET = new Set<string>();
 
 // Dự phòng cho `window.onafterprint` không bao giờ fire (một số trình
 // duyệt/chế độ không phát sự kiện này đáng tin cậy) -- tránh treo hàng đợi
@@ -42,6 +41,10 @@ export function BatchPrint({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentRows, setCurrentRows] = useState<CongViecRow[]>([]);
   const [currentThucHien, setCurrentThucHien] = useState<ThucHienMap>({});
+  // Mục 8: thông tin đầy đủ của thiết bị đang in (khu vực, trưởng ca, người
+  // phụ trách, ảnh...) cho khối đầu trang PrintSheet -- trước đây batch in
+  // không có đầu trang, nay dùng chung mẫu với bản in /checksheet.
+  const [currentThietBi, setCurrentThietBi] = useState<PrintThietBi | null>(null);
   const [doneCount, setDoneCount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Chặn double-run nếu người dùng bấm nút trong lúc đang chạy (nút đã
@@ -84,16 +87,27 @@ export function BatchPrint({
     const congViecRows = await getCongViecRows(supabase, device.thietBiId, thangDau, thangCuoi);
     if (!isMountedRef.current) return false;
     const congViecIds = congViecRows.map((r) => r.congViecId);
-    const thucHienMap = await getThucHien(supabase, congViecIds, thangDau, thangCuoi);
+    const [thucHienMap, thietBiInfo] = await Promise.all([
+      getThucHien(supabase, congViecIds, thangDau, thangCuoi),
+      getThietBiInfo(supabase, device.thietBiId),
+    ]);
     if (!isMountedRef.current) return false;
 
     setCurrentRows(congViecRows);
     setCurrentThucHien(thucHienMap);
+    setCurrentThietBi(thietBiInfo);
 
     // Đợi 1 khoảng ngắn cho React render xong bảng vừa cập nhật trước khi in.
     await new Promise((resolve) => setTimeout(resolve, RENDER_SETTLE_MS));
     if (!isMountedRef.current) return false;
 
+    // Mục 8: tên file PDF mặc định theo thiết bị + tháng, thu bản in vừa 1
+    // trang A3 trước khi mở hộp thoại in (xem printFit.ts).
+    const prevTitle = document.title;
+    if (thietBiInfo) {
+      document.title = buildPrintTitle(thietBiInfo.maThietBi, monthValue);
+    }
+    fitPrintSheetToPage();
     await new Promise<void>((resolve) => {
       let settled = false;
       function finish() {
@@ -106,6 +120,7 @@ export function BatchPrint({
       setTimeout(finish, AFTER_PRINT_FALLBACK_MS);
       window.print();
     });
+    document.title = prevTitle;
     return isMountedRef.current;
   }
 
@@ -150,6 +165,7 @@ export function BatchPrint({
         setRunning(false);
         setCurrentRows([]);
         setCurrentThucHien({});
+        setCurrentThietBi(null);
       }
     }
   }
@@ -181,39 +197,19 @@ export function BatchPrint({
         {errorMsg ? <p className={ui.errorText}>{errorMsg}</p> : null}
       </div>
 
-      {/* Giữ print-area luôn có mặt trong DOM khi đang chạy hàng đợi (không
-          ẩn/hiện phức tạp) -- print.css (@media print) đã tự động ẩn mọi thứ
-          NGOÀI .print-area chỉ trong lúc in, nên màn hình bình thường vẫn
-          thấy được bảng đang render mà không cần thêm CSS thủ công. */}
-      {running ? (
+      {/* Bản in của thiết bị đang xử lý: PrintSheet nằm off-screen trên màn
+          hình (print.css .print-sheet) và là phần duy nhất hiện ra khi in --
+          cùng bố cục đầu trang + bảng với bản in của /checksheet. Banner
+          tiến trình phía trên là phần hiển thị màn hình duy nhất khi chạy. */}
+      {running && currentThietBi ? (
         <div className="print-area mt-3">
-          {currentDevice ? (
-            <p className="mb-2 text-sm font-medium">
-              {currentDevice.tenThietBi} — Tháng {monthValue}
-            </p>
-          ) : null}
-          <ChecksheetTable
+          <PrintSheet
+            thietBi={currentThietBi}
             rows={currentRows}
             thucHien={currentThucHien}
             thangDau={thangDau}
             thangCuoi={thangCuoi}
-            editability={{}}
             todayIso={todayIso}
-            // In hàng loạt từ /admin/stats không có sẵn tên đã resolve của
-            // người phụ trách (PrintDevice chỉ có id/tên thiết bị) -- để
-            // trống thay vì thêm 1 query riêng chỉ cho tính năng phụ này.
-            nguoiPhuTrachTen={null}
-            // In hàng loạt chỉ để xem/in, không sửa -- ẩn hẳn cột "Thao tác".
-            canManageCongViec={false}
-            pendingCongViecIds={EMPTY_PENDING_SET}
-            onEditCongViec={() => {}}
-            onRemoveCongViec={() => {}}
-            onSetPlan={() => {}}
-            onSetAct={() => {}}
-            onRequestBatThuong={() => {}}
-            selectedDay={null}
-            onSelectDay={() => {}}
-            onAutoFillPlan={() => {}}
           />
         </div>
       ) : null}

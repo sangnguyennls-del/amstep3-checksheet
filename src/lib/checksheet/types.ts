@@ -17,6 +17,12 @@ export type CongViecRow = {
   // ChecksheetTable.tsx `matchTanSuatCot`).
   tanSuatChu: string | null;
   tanSuatSo: number | null;
+  // Mục 1 (migration 0016): ngày hết hiệu lực + liên kết phiên bản kế nhiệm.
+  // hieuLucDen nằm TRONG tháng đang xem => dòng này bị loại bỏ/thay thế từ
+  // tháng sau (ChecksheetTable hiện badge + ẩn nút Sửa/Xoá); thayTheBoi khác
+  // null phân biệt "đổi giá trị" với "loại bỏ".
+  hieuLucDen: string | null;
+  thayTheBoi: string | null;
 };
 
 export type ThucHienCell = {

@@ -18,6 +18,11 @@ function friendlyRoleGuardError(message: string): string {
   return message;
 }
 
+// "" là giá trị cũ của option "User" (trước khi RoleSelect đổi sang value="user")
+// -- vẫn chấp nhận để không gãy form nào còn gửi chuỗi rỗng; cả hai đều được
+// coerce thành 'user' khi ghi DB (`vaiTro || "user"`).
+const VAI_TRO_HOP_LE = ["", "user", "admin", "adminm"];
+
 export async function createUser(
   _prevState: UserActionState,
   formData: FormData,
@@ -33,7 +38,6 @@ export async function createUser(
   const password = String(formData.get("password") ?? "");
   const msnv = String(formData.get("msnv") ?? "").trim();
   const hoTen = String(formData.get("hoTen") ?? "").trim();
-  const donVi = String(formData.get("donVi") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
   const kip = String(formData.get("kip") ?? "").trim();
   const nhom = String(formData.get("nhom") ?? "").trim();
@@ -43,7 +47,7 @@ export async function createUser(
     return { error: "Vui lòng nhập đầy đủ tài khoản, mật khẩu, MSNV và họ tên" };
   }
 
-  if (vaiTro !== "" && vaiTro !== "admin" && vaiTro !== "adminm") {
+  if (!VAI_TRO_HOP_LE.includes(vaiTro)) {
     return { error: "Vai trò không hợp lệ" };
   }
 
@@ -76,7 +80,6 @@ export async function createUser(
     id: created.user.id,
     msnv,
     ho_ten: hoTen,
-    don_vi: donVi || null,
     xuong: xuong || null,
     kip: kip || null,
     nhom: nhom || null,
@@ -110,7 +113,6 @@ export async function updateUser(
 
   const id = String(formData.get("id") ?? "");
   const hoTen = String(formData.get("hoTen") ?? "").trim();
-  const donVi = String(formData.get("donVi") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
   const kip = String(formData.get("kip") ?? "").trim();
   const nhom = String(formData.get("nhom") ?? "").trim();
@@ -120,7 +122,7 @@ export async function updateUser(
     return { error: "Thiếu dữ liệu cần thiết" };
   }
 
-  if (vaiTro !== "" && vaiTro !== "admin" && vaiTro !== "adminm") {
+  if (!VAI_TRO_HOP_LE.includes(vaiTro)) {
     return { error: "Vai trò không hợp lệ" };
   }
 
@@ -131,7 +133,6 @@ export async function updateUser(
     .from("nguoidung")
     .update({
       ho_ten: hoTen,
-      don_vi: donVi || null,
       xuong: xuong || null,
       kip: kip || null,
       nhom: nhom || null,

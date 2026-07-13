@@ -13,6 +13,7 @@ import {
   type EquipmentActionState,
 } from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 export type ThietBiDetail = {
   id: string;
@@ -41,6 +42,9 @@ export type CongViecRow = {
   hieu_luc_tu: string | null;
   hieu_luc_den: string | null;
   ngay_loai_bo: string | null;
+  // Mục 1 (0016): id phiên bản kế nhiệm khi dòng này đã bị "sửa từ tháng
+  // sau" -- hiển thị để admin nhận ra chuỗi phiên bản cũ/mới.
+  thay_the_boi: string | null;
 };
 
 export type ChiTietRow = {
@@ -65,6 +69,9 @@ function inputClass() {
 
 function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiDungOption[] }) {
   const [state, formAction, isPending] = useActionState(updateThietBi, initialState);
+  // Mục 11: SearchableSelect là controlled component không có name -- giữ giá
+  // trị ở state + <input type="hidden"> để form action (FormData) vẫn nhận.
+  const [nguoiPhuTrach, setNguoiPhuTrach] = useState(thietBi.nguoi_phu_trach ?? "");
 
   return (
     <form
@@ -110,14 +117,13 @@ function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiD
       </div>
       <div className="flex flex-col gap-1">
         <label className={ui.label}>Người phụ trách</label>
-        <select name="nguoiPhuTrach" defaultValue={thietBi.nguoi_phu_trach ?? ""} className={inputClass()}>
-          <option value="">-- Chưa gán --</option>
-          {users.map((u) => (
-            <option key={u.msnv} value={u.msnv}>
-              {u.ho_ten} ({u.msnv})
-            </option>
-          ))}
-        </select>
+        <input type="hidden" name="nguoiPhuTrach" value={nguoiPhuTrach} />
+        <SearchableSelect
+          value={nguoiPhuTrach}
+          onChange={setNguoiPhuTrach}
+          placeholder="-- Chưa gán --"
+          options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
+        />
       </div>
 
       {state.error ? (
@@ -260,8 +266,11 @@ function EditCongViecDialog({
 
           <div className="col-span-full rounded-md border border-amber-200 bg-amber-50 p-3">
             <p className="mb-2 text-xs text-amber-800">
-              Cơ chế &quot;loại bỏ dần&quot;: bỏ tick Active và điền Ngày loại bỏ để ngừng đưa công
-              việc này vào kế hoạch tháng, không cần xoá dữ liệu lịch sử.
+              Cơ chế &quot;loại bỏ dần&quot; (từ migration 0016): luồng đề xuất/duyệt trên
+              checksheet tự đặt <b>Hiệu lực đến</b> = cuối tháng duyệt (tháng cũ giữ nguyên dữ
+              liệu, tháng sau ngừng hiện). Form này là đường chỉnh THỦ CÔNG của Admin -- sửa
+              trực tiếp cửa sổ hiệu lực khi cần; <b>bỏ tick Active</b> = ẩn hẳn khỏi MỌI tháng
+              (kể cả quá khứ), chỉ dùng khi dòng tạo nhầm.
             </p>
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex items-center gap-2 text-sm">
@@ -353,6 +362,7 @@ function CongViecTable({ congViec, thietBiId }: { congViec: CongViecRow[]; thiet
             <th className="px-2 py-1">Thời gian</th>
             <th className="px-2 py-1">Tần suất</th>
             <th className="px-2 py-1">Active</th>
+            <th className="px-2 py-1">Hiệu lực</th>
             <th className="px-2 py-1">Ngày loại bỏ</th>
             <th className="px-2 py-1">Hành động</th>
           </tr>
@@ -366,6 +376,21 @@ function CongViecTable({ congViec, thietBiId }: { congViec: CongViecRow[]; thiet
                 {cv.tan_suat_chu ?? ""} {cv.tan_suat_so ?? ""}
               </td>
               <td className="px-2 py-1">{cv.active ? "Có" : "Không"}</td>
+              {/* Mục 1 (0016): cửa sổ hiệu lực + liên kết phiên bản để admin
+                  đọc được lịch sử "sửa/loại bỏ từ tháng sau" của công việc. */}
+              <td className="px-2 py-1 whitespace-nowrap">
+                {cv.hieu_luc_tu || cv.hieu_luc_den
+                  ? `${cv.hieu_luc_tu ?? "…"} → ${cv.hieu_luc_den ?? "…"}`
+                  : ""}
+                {cv.thay_the_boi ? (
+                  <span
+                    className="ml-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-600"
+                    title={`Đã được thay thế bởi phiên bản ${cv.thay_the_boi} (hiệu lực từ tháng sau thời điểm duyệt)`}
+                  >
+                    → {cv.thay_the_boi}
+                  </span>
+                ) : null}
+              </td>
               <td className="px-2 py-1">{cv.ngay_loai_bo ?? ""}</td>
               <td className="px-2 py-1">
                 <div className="flex gap-2">
@@ -390,7 +415,7 @@ function CongViecTable({ congViec, thietBiId }: { congViec: CongViecRow[]; thiet
           ))}
           {congViec.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-2 py-3 text-center text-gray-400">
+              <td colSpan={7} className="px-2 py-3 text-center text-gray-400">
                 Chưa có công việc nào.
               </td>
             </tr>

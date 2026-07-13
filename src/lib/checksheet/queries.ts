@@ -37,24 +37,11 @@ export function parseNhanVienMsnv(nhanVienDisplay: string): string {
   return idx === -1 ? nhanVienDisplay : nhanVienDisplay.slice(0, idx);
 }
 
-/**
- * SELECT toàn bộ `thietbi` (join `nguoidung` lấy `ho_ten` qua
- * `nguoi_phu_trach`), suy ra danh sách xưởng/kíp/nhân viên/thiết bị distinct
- * dùng cho bộ lọc cascading Xưởng -> Kíp -> Nhóm nhỏ -> Nhân viên -> Thiết bị.
- */
-export async function getFilterOptions(supabase: SupabaseClient): Promise<FilterOptions> {
-  const { data, error } = await supabase
-    .from("thietbi")
-    .select(
-      "id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nhom, cum, khu_vuc, lanh_dao, truong_ca, nguoi_phu_trach, anh_url, nguoidung(ho_ten)",
-    )
-    .order("ma_thiet_bi");
+const THIETBI_SELECT =
+  "id, ma_thiet_bi, ten_thiet_bi, xuong, kip, nhom, cum, khu_vuc, lanh_dao, truong_ca, nguoi_phu_trach, anh_url, nguoidung(ho_ten)";
 
-  if (error) throw error;
-
-  const rows = (data ?? []) as unknown as ThietBiRow[];
-
-  const thietBi = rows.map((r) => ({
+function mapThietBiRow(r: ThietBiRow): FilterOptions["thietBi"][number] {
+  return {
     id: r.id,
     maThietBi: r.ma_thiet_bi,
     tenThietBi: r.ten_thiet_bi,
@@ -68,7 +55,45 @@ export async function getFilterOptions(supabase: SupabaseClient): Promise<Filter
     nguoiPhuTrach: r.nguoi_phu_trach ?? null,
     nguoiPhuTrachTen: firstOrNull(r.nguoidung)?.ho_ten ?? null,
     anhUrl: r.anh_url ?? null,
-  }));
+  };
+}
+
+/**
+ * SELECT 1 thiết bị theo id, cùng shape với FilterOptions["thietBi"][number]
+ * -- dùng cho in hàng loạt (BatchPrint) để dựng đủ khối thông tin đầu trang
+ * (khu vực, trưởng ca, người phụ trách, ảnh...) như bản in trên /checksheet.
+ */
+export async function getThietBiInfo(
+  supabase: SupabaseClient,
+  thietBiId: string,
+): Promise<FilterOptions["thietBi"][number] | null> {
+  const { data, error } = await supabase
+    .from("thietbi")
+    .select(THIETBI_SELECT)
+    .eq("id", thietBiId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return mapThietBiRow(data as unknown as ThietBiRow);
+}
+
+/**
+ * SELECT toàn bộ `thietbi` (join `nguoidung` lấy `ho_ten` qua
+ * `nguoi_phu_trach`), suy ra danh sách xưởng/kíp/nhân viên/thiết bị distinct
+ * dùng cho bộ lọc cascading Xưởng -> Kíp -> Nhóm nhỏ -> Nhân viên -> Thiết bị.
+ */
+export async function getFilterOptions(supabase: SupabaseClient): Promise<FilterOptions> {
+  const { data, error } = await supabase
+    .from("thietbi")
+    .select(THIETBI_SELECT)
+    .order("ma_thiet_bi");
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as ThietBiRow[];
+
+  const thietBi = rows.map(mapThietBiRow);
 
   const xuong = distinct(rows.map((r) => r.xuong)).sort();
   const kip = distinct(rows.map((r) => r.kip)).sort();
@@ -93,6 +118,8 @@ type CongViecJoinRow = {
   thoi_gian: number | null;
   tan_suat_chu: string | null;
   tan_suat_so: number | null;
+  hieu_luc_den: string | null;
+  thay_the_boi: string | null;
   chitiet:
     | { stt: number | null; ten_chi_tiet: string; dieu_kien_co_ban: string | null }
     | { stt: number | null; ten_chi_tiet: string; dieu_kien_co_ban: string | null }[]
@@ -126,7 +153,7 @@ export async function getCongViecRows(
   const { data, error } = await supabase
     .from("congviec")
     .select(
-      "id, chitiet_id, loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so, active, hieu_luc_tu, hieu_luc_den, chitiet!inner(stt, ten_chi_tiet, dieu_kien_co_ban, thietbi_id)",
+      "id, chitiet_id, loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so, active, hieu_luc_tu, hieu_luc_den, thay_the_boi, chitiet!inner(stt, ten_chi_tiet, dieu_kien_co_ban, thietbi_id)",
     )
     .eq("chitiet.thietbi_id", thietBiId)
     .eq("active", true)
@@ -139,7 +166,7 @@ export async function getCongViecRows(
 
   const rows = (data ?? []) as unknown as CongViecJoinRow[];
 
-  return rows.map((r) => {
+  const mapped = rows.map((r) => {
     const chiTiet = firstOrNull(r.chitiet);
     return {
       congViecId: r.id,
@@ -151,8 +178,24 @@ export async function getCongViecRows(
       thoiGian: r.thoi_gian,
       tanSuatChu: r.tan_suat_chu,
       tanSuatSo: r.tan_suat_so,
+      hieuLucDen: r.hieu_luc_den,
+      thayTheBoi: r.thay_the_boi,
     };
   });
+
+  // PostgREST `.order("stt", { referencedTable })` chỉ sắp thứ tự BÊN TRONG
+  // resource embed, KHÔNG sắp các dòng cha `congviec` -- kết quả trả về thực
+  // tế xếp theo loai_hoat_dong khiến các dòng cùng 1 chi tiết đứng rời nhau
+  // (rowspan-merge của ChecksheetTable chỉ merge dòng LIỀN KỀ, và bản in lệch
+  // hẳn so với mẫu giấy). Sắp lại phía client theo đúng (stt, tenChiTiet,
+  // loaiHoatDong).
+  mapped.sort(
+    (a, b) =>
+      (a.stt ?? Number.MAX_SAFE_INTEGER) - (b.stt ?? Number.MAX_SAFE_INTEGER) ||
+      a.tenChiTiet.localeCompare(b.tenChiTiet, "vi") ||
+      a.loaiHoatDong.localeCompare(b.loaiHoatDong, "vi"),
+  );
+  return mapped;
 }
 
 type ThucHienJoinRow = {

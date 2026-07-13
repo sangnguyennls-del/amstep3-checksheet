@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { ui } from "@/lib/ui";
 import { AdminNav } from "./AdminNav";
 import { AppLogo } from "@/components/AppLogo";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   try {
@@ -24,9 +25,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <span className="text-sm font-semibold text-gray-900">Quản trị</span>
         </div>
         <AdminNav />
-        <Link href="/checksheet" className={`ml-auto ${ui.navLink}`}>
-          Về Checksheet
-        </Link>
+        <div className="ml-auto flex items-center gap-4">
+          <ChangePasswordDialog buttonClassName={ui.navLink} />
+          <Link href="/checksheet" className={ui.navLink}>
+            Về Checksheet
+          </Link>
+        </div>
       </nav>
       <main className="mx-auto w-full max-w-[1920px] p-6">{children}</main>
     </div>

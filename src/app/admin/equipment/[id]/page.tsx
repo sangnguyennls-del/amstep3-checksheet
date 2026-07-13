@@ -34,7 +34,7 @@ export default async function AdminEquipmentDetailPage({
     ? await supabase
         .from("congviec")
         .select(
-          "id, chitiet_id, loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so, active, hieu_luc_tu, hieu_luc_den, ngay_loai_bo",
+          "id, chitiet_id, loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so, active, hieu_luc_tu, hieu_luc_den, ngay_loai_bo, thay_the_boi",
         )
         .in("chitiet_id", chiTietIds)
     : { data: [] };

@@ -8,9 +8,13 @@ import { gridReducer, initialGridState } from "@/lib/checksheet/gridReducer";
 import { CHECKSHEET_SAVED_EVENT } from "@/lib/checksheet/notifications";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
+import { defaultIfAvailable, formatThietBiLabel } from "@/lib/filters";
 import { ui } from "@/lib/ui";
 import { AppLogo } from "@/components/AppLogo";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
+import { PrintSheet } from "./PrintSheet";
+import { buildPrintTitle, fitPrintSheetToPage } from "./printFit";
 import { BatThuongModal } from "./BatThuongModal";
 import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
 import { EquipmentImageModal, toDriveImageSrc } from "./EquipmentImageModal";
@@ -104,19 +108,32 @@ export function ChecksheetApp({
   // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (áp dụng mọi role,
   // kể cả Admin/AdminM), người dùng vẫn tự do đổi lại sau đó. Nhân viên phụ
   // trách chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ
-  // trách ít nhất 1 thiết bị khớp Xưởng/Kíp/Nhóm nhỏ đã mặc định -- nếu
-  // không, mặc định về msnv sẽ lọc rỗng toàn bộ danh sách thiết bị (đa số
-  // user thường không phải nguoi_phu_trach của thiết bị nào).
-  const [xuong, setXuong] = useState(() => currentUser.xuong ?? "");
-  const [kip, setKip] = useState(() => currentUser.kip ?? "");
-  const [nhom, setNhom] = useState(() => currentUser.nhom ?? "");
+  // trách ít nhất 1 thiết bị khớp Xưởng/Nhóm nhỏ đã mặc định -- nếu không,
+  // mặc định về msnv sẽ lọc rỗng toàn bộ danh sách thiết bị (đa số user
+  // thường không phải nguoi_phu_trach của thiết bị nào).
+  //
+  // Fix mục 3: mặc định từ hồ sơ CHỈ được áp khi giá trị đó thực sự có trong
+  // dữ liệu thiết bị (defaultIfAvailable) -- hồ sơ lệch format/chưa có dữ
+  // liệu tương ứng thì về "Tất cả" thay vì lọc rỗng cả danh sách.
+  //
+  // Mục 6: bỏ hẳn bộ lọc Kíp -- Kíp chỉ còn phục vụ phạm vi duyệt đề xuất và
+  // lịch ca (pha 2), không tham gia cascade lọc checksheet nữa.
+  const initialXuong = defaultIfAvailable(
+    currentUser.xuong,
+    filterOptions.thietBi.map((tb) => tb.xuong),
+  );
+  const initialNhom = defaultIfAvailable(
+    currentUser.nhom,
+    filterOptions.thietBi.map((tb) => tb.nhom),
+  );
+  const [xuong, setXuong] = useState(initialXuong);
+  const [nhom, setNhom] = useState(initialNhom);
   const [nhanVienMsnv, setNhanVienMsnv] = useState(() => {
     if (!currentUser.msnv) return "";
     const isOwnerOfSomeDevice = filterOptions.thietBi.some(
       (tb) =>
-        (!currentUser.xuong || tb.xuong === currentUser.xuong) &&
-        (!currentUser.kip || tb.kip === currentUser.kip) &&
-        (!currentUser.nhom || tb.nhom === currentUser.nhom) &&
+        (!initialXuong || tb.xuong === initialXuong) &&
+        (!initialNhom || tb.nhom === initialNhom) &&
         tb.nguoiPhuTrach === currentUser.msnv,
     );
     return isOwnerOfSomeDevice ? currentUser.msnv : "";
@@ -155,36 +172,26 @@ export function ChecksheetApp({
   // checksheet hoặc ngay sau khi 1 đề xuất mới được tạo.
   const [pendingCongViecIds, setPendingCongViecIds] = useState<Set<string>>(new Set());
 
-  // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn, thu hẹp
-  // kip/nhanVien theo xuong đã chọn -- đúng thuật toán hệ cũ (App.applyFilters
-  // trong Javascript.html): lọc mảng thietBi theo các trường đã chọn, distinct
-  // lại cho từng cấp dropdown kế tiếp.
+  // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn --
+  // đúng thuật toán hệ cũ (App.applyFilters trong Javascript.html): lọc mảng
+  // thietBi theo các trường đã chọn, distinct lại cho từng cấp dropdown kế
+  // tiếp. Cascade sau mục 6: Xưởng -> Nhóm nhỏ -> Nhân viên -> Thiết bị.
   const thietBiAfterXuong = useMemo(
     () => filterOptions.thietBi.filter((tb) => !xuong || tb.xuong === xuong),
     [filterOptions.thietBi, xuong],
   );
 
-  const kipOptions = useMemo(
-    () => Array.from(new Set(thietBiAfterXuong.map((tb) => tb.kip).filter(Boolean))).sort(),
-    [thietBiAfterXuong],
-  );
-
-  const thietBiAfterKip = useMemo(
-    () => thietBiAfterXuong.filter((tb) => !kip || tb.kip === kip),
-    [thietBiAfterXuong, kip],
-  );
-
   const nhomOptions = useMemo(
     () =>
       Array.from(
-        new Set(thietBiAfterKip.map((tb) => tb.nhom).filter((v): v is string => !!v)),
+        new Set(thietBiAfterXuong.map((tb) => tb.nhom).filter((v): v is string => !!v)),
       ).sort(),
-    [thietBiAfterKip],
+    [thietBiAfterXuong],
   );
 
   const thietBiAfterNhom = useMemo(
-    () => thietBiAfterKip.filter((tb) => !nhom || tb.nhom === nhom),
-    [thietBiAfterKip, nhom],
+    () => thietBiAfterXuong.filter((tb) => !nhom || tb.nhom === nhom),
+    [thietBiAfterXuong, nhom],
   );
 
   const nhanVienOptions = useMemo(() => {
@@ -213,14 +220,6 @@ export function ChecksheetApp({
 
   function handleXuongChange(value: string) {
     setXuong(value);
-    setKip("");
-    setNhom("");
-    setNhanVienMsnv("");
-    setThietBiId("");
-  }
-
-  function handleKipChange(value: string) {
-    setKip(value);
     setNhom("");
     setNhanVienMsnv("");
     setThietBiId("");
@@ -240,19 +239,36 @@ export function ChecksheetApp({
   // Việc 2: nạp lại danh sách congViecId đang "Chờ duyệt" -- RLS
   // (de_xuat_congviec_select) tự giới hạn kết quả theo người gọi (chính
   // người đề xuất hoặc Admin có quyền duyệt Nhóm đó), nên không cần lọc gì
-  // thêm ở client ngoài .in(congViecIds) để giới hạn đúng phạm vi đang xem.
-  async function refreshPendingCongViec(congViecIds: string[]) {
-    if (congViecIds.length === 0) {
+  // thêm ở client ngoài .in() để giới hạn đúng phạm vi đang xem.
+  //
+  // Mục 1 (0016): đề xuất được canonical hoá về PHIÊN BẢN MỚI NHẤT của công
+  // việc -- lưới tháng cũ có thể đang hiển thị id phiên bản cũ (đã có
+  // thay_the_boi), nên phải query cả id kế nhiệm rồi map ngược về id đang
+  // hiển thị để badge "Chờ duyệt" hiện đúng dòng.
+  async function refreshPendingCongViec(congViecRows: CongViecRow[]) {
+    if (congViecRows.length === 0) {
       setPendingCongViecIds(new Set());
       return;
+    }
+    // map: id (hiển thị hoặc kế nhiệm) -> id đang hiển thị trên lưới
+    const displayIdByQueryId = new Map<string, string>();
+    for (const r of congViecRows) {
+      displayIdByQueryId.set(r.congViecId, r.congViecId);
+      if (r.thayTheBoi) displayIdByQueryId.set(r.thayTheBoi, r.congViecId);
     }
     const supabase = createClient();
     const { data } = await supabase
       .from("de_xuat_congviec")
       .select("congviec_id")
       .eq("trang_thai", "Chờ duyệt")
-      .in("congviec_id", congViecIds);
-    setPendingCongViecIds(new Set((data ?? []).map((r) => r.congviec_id as string)));
+      .in("congviec_id", Array.from(displayIdByQueryId.keys()));
+    setPendingCongViecIds(
+      new Set(
+        (data ?? [])
+          .map((r) => displayIdByQueryId.get(r.congviec_id as string))
+          .filter((v): v is string => !!v),
+      ),
+    );
   }
 
   async function handleLoad() {
@@ -272,7 +288,7 @@ export function ChecksheetApp({
         // tự suy luận lại quy tắc diff tháng/lock-date/device-lock ở client --
         // đây là nguồn chân lý duy nhất (xem editability.ts).
         getEditability(supabase, congViecIds, thangDau),
-        refreshPendingCongViec(congViecIds),
+        refreshPendingCongViec(congViecRows),
       ]);
       setRows(congViecRows);
       dispatch({ type: "load", cells: map });
@@ -348,10 +364,24 @@ export function ChecksheetApp({
   }
 
   // Modal đã gọi RPC (update_congviec_with_reason/remove_congviec_with_reason)
-  // THÀNH CÔNG -- cập nhật state cục bộ, KHÔNG tải lại cả trang: "edit" sửa
-  // tại chỗ 3 field vừa đổi; "remove" lọc hẳn dòng khỏi mảng `rows` (đúng
-  // hành vi loại bỏ mềm -- dòng biến mất khỏi checksheet dù DB vẫn còn
-  // active=false, xem docstring RPC).
+  // THÀNH CÔNG. Mục 1 (0016): thay đổi có hiệu lực từ ĐẦU THÁNG SAU -- tháng
+  // đang xem GIỮ NGUYÊN dòng + giá trị cũ, nên KHÔNG mutate/lọc `rows` tại
+  // chỗ như trước; chỉ tải lại danh sách congviec để dòng vừa đổi nhận
+  // hieu_luc_den/thay_the_boi mới (hiện badge "từ tháng sau", ẩn Sửa/Xoá).
+  // Không đụng gridState -- các ô đã tô nhưng chưa Lưu không bị mất.
+  async function reloadRowsAfterCongViecChange() {
+    try {
+      const supabase = createClient();
+      const { thangDau, thangCuoi } = monthRange(monthValue);
+      const congViecRows = await getCongViecRows(supabase, thietBiId, thangDau, thangCuoi);
+      setRows(congViecRows);
+      await refreshPendingCongViec(congViecRows);
+    } catch {
+      // Lỗi mạng khi refresh phụ: giữ nguyên rows cũ (giá trị hiển thị vẫn
+      // đúng cho tháng này), lần "Xem checksheet" kế tiếp sẽ đồng bộ lại.
+    }
+  }
+
   function handleEditCongViecSuccess(result: EditCongViecResult) {
     if (!result.applied) {
       // Việc 2: người phụ trách (không phải admin) vừa tạo đề xuất "Chờ
@@ -361,18 +391,8 @@ export function ChecksheetApp({
       setEditTarget(null);
       return;
     }
-    if (result.mode === "remove") {
-      setRows((prev) => prev.filter((r) => r.congViecId !== result.congViecId));
-    } else {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.congViecId === result.congViecId
-            ? { ...r, thoiGian: result.thoiGian, tanSuatChu: result.tanSuatChu, tanSuatSo: result.tanSuatSo }
-            : r,
-        ),
-      );
-    }
     setEditTarget(null);
+    void reloadRowsAfterCongViecChange();
   }
 
   /**
@@ -590,6 +610,20 @@ export function ChecksheetApp({
     }
   }
 
+  // Mục 8: nút "In" -- đặt document.title = tên file PDF mặc định
+  // (Checksheet-<mã>-<MMyyyy>), thu bản in vừa 1 trang A3 rồi mới mở hộp
+  // thoại in; khôi phục title cũ sau khi hộp thoại đóng (window.print()
+  // chặn tới lúc đó trên các trình duyệt desktop).
+  function handlePrint() {
+    const prevTitle = document.title;
+    if (selectedThietBi) {
+      document.title = buildPrintTitle(selectedThietBi.maThietBi, monthValue);
+    }
+    fitPrintSheetToPage();
+    window.print();
+    document.title = prevTitle;
+  }
+
   const canLoad = !!thietBiId && !!monthValue;
   const { thangDau, thangCuoi } = monthRange(monthValue);
   const showTable = loadedFor === `${thietBiId}_${monthValue}`;
@@ -607,88 +641,51 @@ export function ChecksheetApp({
         {currentUser.msnv ? ` (${currentUser.msnv})` : ""}
       </p>
 
+      {/* Mục 11: mọi bộ lọc dùng SearchableSelect (gõ-tìm không dấu) thay
+          <select> thuần -- danh sách nhân viên/thiết bị dài, thao tác trên
+          điện thoại nhanh hơn hẳn. */}
       <div className={`no-print mb-4 flex flex-wrap items-end gap-3 ${ui.card}`}>
-        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-44">
           <label className={ui.label}>Xưởng</label>
-          <select
-            className={`w-full min-w-0 ${selectClass}`}
+          <SearchableSelect
             value={xuong}
-            onChange={(e) => handleXuongChange(e.target.value)}
-          >
-            <option value="">-- Tất cả --</option>
-            {filterOptions.xuong.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
+            onChange={handleXuongChange}
+            options={filterOptions.xuong.map((x) => ({ value: x, label: x }))}
+          />
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
-          <label className={ui.label}>Kíp</label>
-          <select
-            className={`w-full min-w-0 ${selectClass}`}
-            value={kip}
-            onChange={(e) => handleKipChange(e.target.value)}
-          >
-            <option value="">-- Tất cả --</option>
-            {kipOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-36">
           <label className={ui.label}>Nhóm nhỏ</label>
-          <select
-            className={`w-full min-w-0 ${selectClass}`}
+          <SearchableSelect
             value={nhom}
-            onChange={(e) => handleNhomChange(e.target.value)}
-          >
-            <option value="">-- Tất cả --</option>
-            {nhomOptions.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+            onChange={handleNhomChange}
+            options={nhomOptions.map((n) => ({ value: n, label: n }))}
+          />
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-56">
           <label className={ui.label}>Nhân viên phụ trách</label>
-          <select
-            className={`w-full min-w-0 ${selectClass}`}
+          <SearchableSelect
             value={nhanVienMsnv}
-            onChange={(e) => handleNhanVienChange(e.target.value)}
-          >
-            <option value="">-- Tất cả --</option>
-            {nhanVienOptions.map((display) => {
-              const msnv = parseNhanVienMsnv(display);
-              return (
-                <option key={msnv} value={msnv}>
-                  {display}
-                </option>
-              );
-            })}
-          </select>
+            onChange={handleNhanVienChange}
+            options={nhanVienOptions.map((display) => ({
+              value: parseNhanVienMsnv(display),
+              label: display,
+            }))}
+          />
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-64">
           <label className={ui.label}>Thiết bị</label>
-          <select
-            className={`w-full min-w-0 ${selectClass}`}
+          <SearchableSelect
             value={thietBiId}
-            onChange={(e) => setThietBiId(e.target.value)}
-          >
-            <option value="">-- Chọn thiết bị --</option>
-            {thietBiAfterNhanVien.map((tb) => (
-              <option key={tb.id} value={tb.id}>
-                {tb.maThietBi} - {tb.tenThietBi}
-              </option>
-            ))}
-          </select>
+            onChange={setThietBiId}
+            placeholder="-- Chọn thiết bị --"
+            options={thietBiAfterNhanVien.map((tb) => ({
+              value: tb.id,
+              label: formatThietBiLabel(tb.maThietBi, tb.tenThietBi),
+            }))}
+          />
         </div>
 
         <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
@@ -744,7 +741,7 @@ export function ChecksheetApp({
                 : "Không có thay đổi nào chưa lưu."}
             </p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => window.print()} className={ui.buttonSecondary}>
+              <button type="button" onClick={handlePrint} className={ui.buttonSecondary}>
                 In
               </button>
               <button
@@ -764,103 +761,18 @@ export function ChecksheetApp({
           <div className="print-area">
             {selectedThietBi ? (
               <>
-                {/* Bản in: khối đầu trang dạng bảng có viền + ảnh thiết bị
-                    phóng to bên trái, khớp đúng cấu trúc mẫu giấy gốc --
-                    CHỈ hiện khi in (`hidden print:flex`), độc lập với khối
-                    thẻ tương tác bên dưới (ẩn khi in qua `no-print` -- màn
-                    hình vẫn giữ dạng thẻ hiện tại, chỉ bản in cần khớp mẫu).
-                    Ảnh + [bảng đầu trang + ChecksheetTable] nằm CHUNG 1 hàng
-                    flex (items-stretch mặc định) để ảnh tự căng đúng chiều
-                    cao TOÀN BỘ bảng hạng mục -- ChecksheetTable vì vậy phải
-                    render THÊM 1 lần riêng ở đây cho bản in (bản còn lại bên
-                    ngoài dành cho màn hình, ẩn khi in qua `print:hidden`). */}
-                <div className="hidden items-stretch gap-3 print:flex">
-                  {selectedThietBi.anhUrl && selectedThietBi.anhUrl.trim() !== "" ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- ảnh Google Drive bên ngoài, chỉ dùng khi in
-                    <img
-                      src={toDriveImageSrc(selectedThietBi.anhUrl.trim())}
-                      alt={`Sơ đồ thiết bị ${selectedThietBi.tenThietBi}`}
-                      className="w-64 shrink-0 border border-gray-400 object-contain"
-                    />
-                  ) : null}
-                  <div className="flex flex-1 flex-col gap-3">
-                    <table className="border-collapse border border-gray-400 text-center">
-                      <tbody>
-                        <tr>
-                          <th rowSpan={2} className="border border-gray-400 px-2 py-1 align-top">
-                            <div className="flex items-center gap-1.5">
-                              <AppLogo heightPx={20} />
-                              <div className="text-left">
-                                <p className="font-semibold">CHECKSHEET BƯỚC 3</p>
-                                <p className="font-normal">
-                                  Ngày lập: {todayIso.split("-").reverse().join("/")}
-                                </p>
-                              </div>
-                            </div>
-                          </th>
-                          <th
-                            rowSpan={2}
-                            className="border border-gray-400 px-2 py-1 text-left align-top font-normal"
-                          >
-                            <p>Nhóm nhỏ: {selectedThietBi.nhom ?? ""}</p>
-                            <p>Cụm: {selectedThietBi.cum ?? ""}</p>
-                          </th>
-                          <th className="border border-gray-400 px-2 py-1">Phòng/xưởng</th>
-                          <th className="border border-gray-400 px-2 py-1">Khu vực</th>
-                          <th className="border border-gray-400 px-2 py-1">Tên thiết bị</th>
-                          <th className="border border-gray-400 px-2 py-1">Lãnh đạo xưởng</th>
-                          <th className="border border-gray-400 px-2 py-1">Trưởng ca</th>
-                          <th className="border border-gray-400 px-2 py-1">
-                            Kế hoạch / Thực tế
-                          </th>
-                        </tr>
-                        <tr>
-                          <td className="border border-gray-400 px-2 py-1 font-semibold">
-                            {selectedThietBi.xuong ?? ""}
-                          </td>
-                          <td className="border border-gray-400 px-2 py-1 font-semibold">
-                            {selectedThietBi.khuVuc ?? ""}
-                          </td>
-                          <td className="border border-gray-400 px-2 py-1 font-semibold">
-                            {selectedThietBi.tenThietBi}
-                          </td>
-                          <td className="border border-gray-400 px-2 py-1 font-semibold">
-                            {selectedThietBi.lanhDao ?? ""}
-                          </td>
-                          <td className="border border-gray-400 px-2 py-1 font-semibold">
-                            {selectedThietBi.truongCa ?? ""}
-                          </td>
-                          <td className="border border-gray-400 px-1 py-1">
-                            <div className="flex items-center justify-center gap-1">
-                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgY}`} />
-                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgG}`} />
-                              <span className={`inline-block h-2.5 w-2.5 ${checksheetStyles.bgR}`} />
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <ChecksheetTable
-                      rows={rows}
-                      thucHien={gridState.cells}
-                      thangDau={thangDau}
-                      thangCuoi={thangCuoi}
-                      editability={editability}
-                      todayIso={todayIso}
-                      nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
-                      canManageCongViec={canManageDevice}
-                      pendingCongViecIds={pendingCongViecIds}
-                      onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
-                      onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
-                      onSetPlan={handleSetPlan}
-                      onSetAct={handleSetAct}
-                      onRequestBatThuong={handleRequestBatThuong}
-                      selectedDay={selectedDay}
-                      onSelectDay={handleSelectDay}
-                      onAutoFillPlan={autoFillPlan}
-                    />
-                  </div>
-                </div>
+                {/* Bản in (mục 8): PrintSheet render off-screen trên màn hình
+                    (đo được kích thước thật để thu vừa 1 trang A3 -- xem
+                    printFit.ts), là phần duy nhất hiện ra khi in. Dùng chung
+                    với in hàng loạt ở /admin/stats. */}
+                <PrintSheet
+                  thietBi={selectedThietBi}
+                  rows={rows}
+                  thucHien={gridState.cells}
+                  thangDau={thangDau}
+                  thangCuoi={thangCuoi}
+                  todayIso={todayIso}
+                />
               <div className="no-print mb-3 rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -874,8 +786,10 @@ export function ChecksheetApp({
                       </p>
                     </div>
                   </div>
+                  {/* Mục 10: bỏ "Kíp" (chỉ phục vụ lịch ca), thêm "Người chịu
+                      trách nhiệm" lên cùng hàng với Khu vực/Trưởng ca -- cột
+                      tương ứng trong bảng lưới đã bỏ (ChecksheetTable). */}
                   <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-8">
-                    <InfoField label="Kíp" value={selectedThietBi.kip} />
                     <InfoField label="Nhóm nhỏ" value={selectedThietBi.nhom} />
                     <InfoField label="Cụm" value={selectedThietBi.cum} />
                     <InfoField label="Phòng/Xưởng" value={selectedThietBi.xuong} />
@@ -883,6 +797,10 @@ export function ChecksheetApp({
                     <InfoField label="Tên thiết bị" value={selectedThietBi.tenThietBi} />
                     <InfoField label="Lãnh đạo xưởng" value={selectedThietBi.lanhDao} />
                     <InfoField label="Trưởng ca" value={selectedThietBi.truongCa} />
+                    <InfoField
+                      label="Người chịu trách nhiệm"
+                      value={selectedThietBi.nguoiPhuTrachTen}
+                    />
                   </dl>
                   <button
                     type="button"
@@ -932,7 +850,6 @@ export function ChecksheetApp({
                 thangCuoi={thangCuoi}
                 editability={editability}
                 todayIso={todayIso}
-                nguoiPhuTrachTen={selectedThietBi?.nguoiPhuTrachTen ?? null}
                 canManageCongViec={canManageDevice}
                 pendingCongViecIds={pendingCongViecIds}
                 onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}

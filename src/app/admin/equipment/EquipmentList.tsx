@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { createThietBi, deleteThietBi, type EquipmentActionState } from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
+import { defaultIfAvailable, formatThietBiLabel } from "@/lib/filters";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 export type ThietBiRow = {
   id: string;
@@ -30,6 +32,9 @@ const initialState: EquipmentActionState = { error: null };
 function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
   const [state, formAction, isPending] = useActionState(createThietBi, initialState);
   const [open, setOpen] = useState(false);
+  // SearchableSelect là component controlled không có name -- giữ giá trị ở
+  // state + <input type="hidden"> để form action (FormData) vẫn nhận được.
+  const [nguoiPhuTrach, setNguoiPhuTrach] = useState("");
 
   return (
     <div className="mb-6">
@@ -77,14 +82,13 @@ function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Người phụ trách</label>
-            <select name="nguoiPhuTrach" defaultValue="" className={ui.input}>
-              <option value="">-- Chưa gán --</option>
-              {users.map((u) => (
-                <option key={u.msnv} value={u.msnv}>
-                  {u.ho_ten} ({u.msnv})
-                </option>
-              ))}
-            </select>
+            <input type="hidden" name="nguoiPhuTrach" value={nguoiPhuTrach} />
+            <SearchableSelect
+              value={nguoiPhuTrach}
+              onChange={setNguoiPhuTrach}
+              placeholder="-- Chưa gán --"
+              options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
+            />
           </div>
 
           {state.error ? (
@@ -127,9 +131,15 @@ export function EquipmentList({
   // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Kíp/Nhóm
   // nhỏ/Nhân viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
   // initializer (không phải useEffect) để tránh lint set-state-in-effect.
-  const [filterXuong, setFilterXuong] = useState(() => currentUser.xuong ?? "");
-  const [filterKip, setFilterKip] = useState(() => currentUser.kip ?? "");
-  const [filterNhom, setFilterNhom] = useState(() => currentUser.nhom ?? "");
+  // Fix mục 3: chỉ áp mặc định khi giá trị đó thực sự có trong dữ liệu thiết
+  // bị -- hồ sơ có nhom/kip lệch format (vd "1" vs "Kíp 1", hoặc thietbi.nhom
+  // chưa nhập) sẽ mặc định về "Tất cả" thay vì lọc rỗng cả danh sách.
+  const initialXuong = defaultIfAvailable(currentUser.xuong, items.map((i) => i.xuong));
+  const initialKip = defaultIfAvailable(currentUser.kip, items.map((i) => i.kip));
+  const initialNhom = defaultIfAvailable(currentUser.nhom, items.map((i) => i.nhom));
+  const [filterXuong, setFilterXuong] = useState(initialXuong);
+  const [filterKip, setFilterKip] = useState(initialKip);
+  const [filterNhom, setFilterNhom] = useState(initialNhom);
   const [filterKhuVuc, setFilterKhuVuc] = useState("");
   // Chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ trách ít
   // nhất 1 thiết bị khớp Xưởng/Kíp đã mặc định -- nếu không, mặc định về
@@ -139,8 +149,8 @@ export function EquipmentList({
     if (!currentUser.msnv) return "";
     const isOwnerOfSomeDevice = items.some(
       (i) =>
-        (!currentUser.xuong || i.xuong === currentUser.xuong) &&
-        (!currentUser.kip || i.kip === currentUser.kip) &&
+        (!initialXuong || i.xuong === initialXuong) &&
+        (!initialKip || i.kip === initialKip) &&
         i.nguoi_phu_trach === currentUser.msnv,
     );
     return isOwnerOfSomeDevice ? currentUser.msnv : "";
@@ -163,7 +173,7 @@ export function EquipmentList({
   function handleDelete(item: ThietBiRow) {
     if (
       !confirm(
-        `Xoá thiết bị ${item.ma_thiet_bi} - ${item.ten_thiet_bi}?\n\nHành động này XOÁ VĨNH VIỄN toàn bộ Chi tiết và Công việc con của thiết bị, không thể hoàn tác. Nếu chỉ muốn ngừng theo dõi một hạng mục, hãy dùng chức năng "loại bỏ dần" (đặt Active = false) ở trang Chi tiết thiết bị thay vì xoá ở đây.`,
+        `Xoá thiết bị ${formatThietBiLabel(item.ma_thiet_bi, item.ten_thiet_bi)}?\n\nHành động này XOÁ VĨNH VIỄN toàn bộ Chi tiết và Công việc con của thiết bị, không thể hoàn tác. Nếu chỉ muốn ngừng theo dõi một hạng mục, hãy dùng chức năng "loại bỏ dần" (đặt Active = false) ở trang Chi tiết thiết bị thay vì xoá ở đây.`,
       )
     ) {
       return;
@@ -183,65 +193,47 @@ export function EquipmentList({
 
       {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
+      {/* Mục 11: bộ lọc gõ-tìm không dấu (SearchableSelect) thay <select>. */}
       <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${ui.card}`}>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Xưởng</label>
-          <select value={filterXuong} onChange={(e) => setFilterXuong(e.target.value)} className={ui.input}>
-            <option value="">-- Tất cả --</option>
-            {xuongOptions.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={filterXuong}
+            onChange={setFilterXuong}
+            options={xuongOptions.map((x) => ({ value: x, label: x }))}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Kíp</label>
-          <select value={filterKip} onChange={(e) => setFilterKip(e.target.value)} className={ui.input}>
-            <option value="">-- Tất cả --</option>
-            {kipOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={filterKip}
+            onChange={setFilterKip}
+            options={kipOptions.map((k) => ({ value: k, label: k }))}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Nhóm nhỏ</label>
-          <select value={filterNhom} onChange={(e) => setFilterNhom(e.target.value)} className={ui.input}>
-            <option value="">-- Tất cả --</option>
-            {nhomOptions.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={filterNhom}
+            onChange={setFilterNhom}
+            options={nhomOptions.map((n) => ({ value: n, label: n }))}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Khu vực</label>
-          <select value={filterKhuVuc} onChange={(e) => setFilterKhuVuc(e.target.value)} className={ui.input}>
-            <option value="">-- Tất cả --</option>
-            {khuVucOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={filterKhuVuc}
+            onChange={setFilterKhuVuc}
+            options={khuVucOptions.map((k) => ({ value: k, label: k }))}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Nhân viên phụ trách</label>
-          <select
+          <SearchableSelect
             value={filterNguoiPhuTrach}
-            onChange={(e) => setFilterNguoiPhuTrach(e.target.value)}
-            className={ui.input}
-          >
-            <option value="">-- Tất cả --</option>
-            {users.map((u) => (
-              <option key={u.msnv} value={u.msnv}>
-                {u.ho_ten} ({u.msnv})
-              </option>
-            ))}
-          </select>
+            onChange={setFilterNguoiPhuTrach}
+            options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
+          />
         </div>
       </div>
 

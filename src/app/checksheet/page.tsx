@@ -7,6 +7,7 @@ import { ui } from "@/lib/ui";
 import { ChecksheetApp } from "./ChecksheetApp";
 import { NotificationBell } from "./NotificationBell";
 import { AppLogo } from "@/components/AppLogo";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export default async function ChecksheetPage() {
   const supabase = await createClient();
@@ -49,6 +50,7 @@ export default async function ChecksheetPage() {
               {profile?.ho_ten ?? user.email}{" "}
               <span className="text-gray-400">({profile?.vai_tro || "user"})</span>
             </span>
+            <ChangePasswordDialog />
             <form action={logout}>
               <button type="submit" className={`${ui.buttonSecondary} px-3! py-1.5!`}>
                 Đăng xuất

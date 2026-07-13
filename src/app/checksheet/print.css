@@ -1,17 +1,53 @@
 /*
- * Print/PDF cho trang /checksheet (Task 4) -- port tinh thần hệ GAS cũ
- * (CLAUDE.md "Client-side structure": window.print() + @media print riêng
- * cho A3 ngang, ẩn phần điều khiển/nút bấm khi in, chỉ hiện bảng). CHỈ áp
- * dụng trong @media print -- không ảnh hưởng gì tới hiển thị màn hình
- * thường (không có selector nào ở ngoài @media print trong file này).
+ * Print/PDF cho /checksheet + in hàng loạt /admin/stats (mục 8) -- cơ chế:
  *
- * File này là CSS GLOBAL (không phải *.module.css) vì các class .no-print/
- * .print-area cần gắn trực tiếp lên nhiều phần tử JSX khác nhau trong
- * ChecksheetApp.tsx bằng className thuần, không qua CSS Modules scoping.
- * Next.js App Router cho phép import CSS global từ bất kỳ component nào
- * trong thư mục app/ (xem node_modules/next/dist/docs/01-app/01-getting-
- * started/11-css.md, mục "Global CSS").
+ *   1. PrintSheet.tsx render BẢN IN (khối đầu trang + ChecksheetTable
+ *      printMode) trong phần tử `.print-sheet` -- trên màn hình nó nằm
+ *      OFF-SCREEN (không phải display:none!) với bề rộng đúng vùng in A3
+ *      ngang, để printFit.ts đo được scrollHeight thật rồi đặt `zoom` inline
+ *      cho vừa 1 trang (thiết bị nhiều dòng tự thu nhỏ).
+ *   2. Khi in, `.print-sheet` về position:static và là phần duy nhất hiện
+ *      ra; mọi điều khiển mang .no-print, bản bảng màn hình mang print:hidden.
+ *
+ * Các rule cho .print-sheet phải nằm NGOÀI @media print: chúng cần áp dụng
+ * ngay trên màn hình (off-screen) để phép đo của printFit.ts khớp 100% với
+ * kết quả in thật (cùng font-size, cùng kích thước ô).
+ *
+ * File này là CSS GLOBAL (không phải *.module.css) vì .no-print/.print-area/
+ * .print-sheet/.day-cell cần gắn lên nhiều phần tử JSX bằng className thuần.
  */
+
+.print-sheet {
+  position: absolute;
+  top: 0;
+  left: -20000px;
+  /* ~400mm vùng in A3 ngang (420 - 2x10mm margin) ở 96dpi -- printFit.ts có
+     thể ghi đè width/zoom inline khi cần thu nhỏ cho vừa 1 trang. */
+  width: 1511px;
+  background: #fff;
+  /* Màu ô Plan/Actual là background-color -- trình duyệt mặc định BỎ
+     background khi in; ép in đúng màu không phụ thuộc checkbox
+     "Background graphics" của hộp thoại in. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.print-sheet table {
+  width: 100%;
+  font-size: 9px;
+}
+
+.print-sheet .overflow-x-auto {
+  overflow: visible !important;
+}
+
+/* Ô ngày trong bản in: bỏ min-width 32px cứng của CSS module (nguyên nhân
+   bảng in không co lại được, bị cắt ở ~cột ngày 25), hạ chiều cao ô. */
+.print-sheet .day-cell {
+  width: auto;
+  min-width: 0;
+  height: 20px;
+}
 
 @media print {
   @page {
@@ -20,7 +56,7 @@
   }
 
   /* Ẩn mọi phần điều khiển (bộ lọc, nút Lưu/In, thông báo lỗi/cảnh báo) khi
-     in -- chỉ giữ lại bảng checksheet. */
+     in -- chỉ giữ lại bản in .print-sheet. */
   .no-print {
     display: none !important;
   }
@@ -34,17 +70,10 @@
     overflow: visible !important;
   }
 
-  /* ChecksheetTable bọc bảng trong div riêng có class overflow-x-auto (để
-     cuộn ngang trên màn hình) -- rule .print-area{overflow:visible} ở trên
-     chỉ áp cho chính .print-area, KHÔNG áp cho div lồng bên trong này, nên
-     khi in bảng 31 cột ngày vẫn bị cuộn/cắt thay vì chảy tràn hết khổ giấy.
-     Ghi đè riêng cho đúng phần tử lồng đó. */
-  .print-area .overflow-x-auto {
-    overflow: visible !important;
-  }
-
-  .print-area table {
-    width: 100%;
-    font-size: 9px;
+  .print-sheet {
+    position: static;
+    left: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

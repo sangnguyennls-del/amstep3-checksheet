@@ -70,3 +70,60 @@ export async function logout() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export type ChangePasswordState = {
+  error: string | null;
+  success?: boolean;
+};
+
+// Mục 12: người dùng TỰ đổi mật khẩu của chính mình sau khi đăng nhập (trước
+// đây chỉ có admin reset hộ). Bắt nhập mật khẩu hiện tại và xác thực lại bằng
+// signInWithPassword trước khi updateUser -- phòng máy để quên đăng nhập bị
+// người khác đổi mật khẩu chiếm tài khoản. Chỉ đổi được cho CHÍNH session
+// đang đăng nhập (supabase.auth.updateUser), không cần service role.
+export async function changeOwnPassword(
+  _prevState: ChangePasswordState,
+  formData: FormData,
+): Promise<ChangePasswordState> {
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return { error: "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới" };
+  }
+  if (newPassword.length < 6) {
+    return { error: "Mật khẩu mới phải có ít nhất 6 ký tự" };
+  }
+  if (newPassword !== confirmPassword) {
+    return { error: "Mật khẩu mới nhập lại không khớp" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) {
+    return { error: "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại" };
+  }
+
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (verifyError) {
+    return { error: "Mật khẩu hiện tại không đúng" };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+  if (updateError) {
+    // Supabase từ chối đặt lại đúng mật khẩu cũ -- dịch thông báo cho dễ hiểu.
+    if (updateError.message.includes("different from the old password")) {
+      return { error: "Mật khẩu mới phải khác mật khẩu hiện tại" };
+    }
+    return { error: updateError.message };
+  }
+
+  return { error: null, success: true };
+}

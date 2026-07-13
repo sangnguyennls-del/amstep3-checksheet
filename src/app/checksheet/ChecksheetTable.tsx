@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { cellKey, type CongViecRow, type KetQua, type ThucHienMap } from "@/lib/checksheet/types";
 import type { EditabilityMap } from "@/lib/checksheet/editability";
+import { stripDiacritics } from "@/lib/filters";
 import { Cell, type PaintOp } from "./Cell";
 
 const DENY_EDITABLE = { plan: false, act: false };
@@ -51,15 +52,9 @@ export function listDaysInRange(thangDau: string, thangCuoi: string): string[] {
 
 // 4 cột con của "Tần suất" đúng thứ tự trên mẫu giấy. `tan_suat_chu` là text
 // tự do (không có CHECK constraint ở DB, xem 0001_schema.sql) nên phải chuẩn
-// hoá (bỏ dấu, lowercase) trước khi so khớp thay vì so chuỗi y nguyên.
+// hoá (bỏ dấu, lowercase -- stripDiacritics ở lib/filters) trước khi so khớp
+// thay vì so chuỗi y nguyên.
 const TAN_SUAT_COLUMNS = ["Ngày", "Tuần", "Tháng", "Quý"] as const;
-
-function stripDiacritics(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
 
 const TAN_SUAT_KEYS = TAN_SUAT_COLUMNS.map(stripDiacritics);
 
@@ -106,12 +101,26 @@ const COL_WIDTHS = {
   tenChiTiet: 190,
   dieuKienCoBan: 230,
   tieuChuan: 90,
-  nguoiPhuTrach: 130,
   thoiGian: 64,
   auto: 56,
   thaoTac: 96,
   tanSuat: 44,
   ngay: 32,
+} as const;
+
+// Mục 8: bộ bề rộng gọn hơn cho BẢN IN (A3 ngang, chữ 9px, không có cột
+// Auto/Thao tác) -- với table-layout:fixed + width:100% các giá trị này đóng
+// vai trò TỶ LỆ chia cột, tổng tuyệt đối không quan trọng bằng tương quan.
+const PRINT_COL_WIDTHS = {
+  so: 26,
+  tenChiTiet: 140,
+  dieuKienCoBan: 180,
+  tieuChuan: 64,
+  thoiGian: 36,
+  auto: 0,
+  thaoTac: 0,
+  tanSuat: 26,
+  ngay: 24,
 } as const;
 
 export function ChecksheetTable({
@@ -121,7 +130,6 @@ export function ChecksheetTable({
   thangCuoi,
   editability,
   todayIso,
-  nguoiPhuTrachTen,
   canManageCongViec,
   pendingCongViecIds,
   onEditCongViec,
@@ -132,6 +140,7 @@ export function ChecksheetTable({
   selectedDay,
   onSelectDay,
   onAutoFillPlan,
+  printMode = false,
 }: {
   rows: CongViecRow[];
   thucHien: ThucHienMap;
@@ -143,10 +152,6 @@ export function ChecksheetTable({
   editability: EditabilityMap;
   /** Hôm nay (ISO) -- truyền xuống Cell chỉ để tô gợi ý cửa sổ +-4 ngày. */
   todayIso: string;
-  /** Tên người phụ trách thiết bị (1 người/1 thiết bị, xem CLAUDE.md) -- hiện
-   * lặp lại ở cột "Người chịu trách nhiệm" mỗi dòng đúng như mẫu giấy, không
-   * rowSpan-merge (đây không phải field theo từng CONGVIEC trong DB). */
-  nguoiPhuTrachTen: string | null;
   /** Việc C: gợi ý UI cho cột "Thao tác" (Sửa/Loại bỏ) -- CHỈ ẩn/hiện, quyền
    * thật do RPC `can_manage_congviec` quyết định (xem EditCongViecModal.tsx). */
   canManageCongViec: boolean;
@@ -163,10 +168,16 @@ export function ChecksheetTable({
   selectedDay: { congViecId: string; ngay: string } | null;
   onSelectDay: (congViecId: string, ngay: string) => void;
   onAutoFillPlan: (congViecId: string, startDay: string, interval: 4 | 8) => void;
+  /** Mục 8: chế độ BẢN IN -- KHÔNG render cột Auto + Thao tác (thay vì ẩn
+   * bằng CSS `no-print` trên <col>, vốn không đáng tin với table-layout
+   * fixed: cột bị ẩn nhưng slot bề rộng vẫn được phân bổ lệch), dùng bộ bề
+   * rộng cột gọn PRINT_COL_WIDTHS. Chỉ PrintSheet bật cờ này. */
+  printMode?: boolean;
 }) {
   const rowSpans = calcRowSpans(rows);
   const days = listDaysInRange(thangDau, thangCuoi);
   const [namNam, thangNam] = thangDau.split("-").map(Number);
+  const colWidths = printMode ? PRINT_COL_WIDTHS : COL_WIDTHS;
 
   // Kéo-tô: isPaintingRef bật khi pointerdown trên 1 ô, tắt khi pointerup ở
   // bất kỳ đâu (kể cả ngoài bảng) hoặc window mất focus -- currentOpRef lưu
@@ -219,19 +230,18 @@ export function ChecksheetTable({
     <div className="overflow-x-auto rounded-md border bg-white">
       <table className="border-collapse text-xs" style={{ tableLayout: "fixed", width: "100%" }}>
         <colgroup>
-          <col style={{ width: COL_WIDTHS.so }} />
-          <col style={{ width: COL_WIDTHS.tenChiTiet }} />
-          <col style={{ width: COL_WIDTHS.dieuKienCoBan }} />
-          <col style={{ width: COL_WIDTHS.tieuChuan }} />
-          <col style={{ width: COL_WIDTHS.nguoiPhuTrach }} />
-          <col style={{ width: COL_WIDTHS.thoiGian }} />
-          <col style={{ width: COL_WIDTHS.auto }} />
-          <col className="no-print" style={{ width: COL_WIDTHS.thaoTac }} />
+          <col style={{ width: colWidths.so }} />
+          <col style={{ width: colWidths.tenChiTiet }} />
+          <col style={{ width: colWidths.dieuKienCoBan }} />
+          <col style={{ width: colWidths.tieuChuan }} />
+          <col style={{ width: colWidths.thoiGian }} />
+          {printMode ? null : <col style={{ width: colWidths.auto }} />}
+          {printMode ? null : <col className="no-print" style={{ width: colWidths.thaoTac }} />}
           {TAN_SUAT_COLUMNS.map((label) => (
-            <col key={label} style={{ width: COL_WIDTHS.tanSuat }} />
+            <col key={label} style={{ width: colWidths.tanSuat }} />
           ))}
           {days.map((d) => (
-            <col key={d} style={{ width: COL_WIDTHS.ngay }} />
+            <col key={d} style={{ width: colWidths.ngay }} />
           ))}
         </colgroup>
         <thead className="border-b bg-gray-50 text-left text-gray-600">
@@ -249,21 +259,22 @@ export function ChecksheetTable({
               Tiêu chuẩn
             </th>
             <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
-              Người chịu trách nhiệm
-            </th>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
               Thời gian
             </th>
-            <th
-              className="border border-gray-200 px-1 py-1 text-center"
-              rowSpan={2}
-              title="Tự động tô Plan mỗi 4/8 ngày"
-            >
-              Auto
-            </th>
-            <th className="no-print border border-gray-200 px-1 py-1 text-center" rowSpan={2}>
-              Thao tác
-            </th>
+            {printMode ? null : (
+              <th
+                className="border border-gray-200 px-1 py-1 text-center"
+                rowSpan={2}
+                title="Tự động tô Plan mỗi 4/8 ngày"
+              >
+                Auto
+              </th>
+            )}
+            {printMode ? null : (
+              <th className="no-print border border-gray-200 px-1 py-1 text-center" rowSpan={2}>
+                Thao tác
+              </th>
+            )}
             <th className="border border-gray-200 px-1 py-1 text-center" colSpan={TAN_SUAT_COLUMNS.length}>
               Tần suất
             </th>
@@ -288,6 +299,11 @@ export function ChecksheetTable({
           {rows.map((row, idx) => {
             const span = rowSpans[idx];
             const isGroupStart = span > 0;
+            // Mục 1 (0016): dòng có hieu_luc_den rơi trong tháng đang xem =
+            // đã bị loại bỏ/thay thế, hiệu lực hết tháng này -- hiện badge
+            // thay cho nút Sửa/Xoá (đề xuất tiếp trên dòng này sẽ bị RPC
+            // chặn/quy về phiên bản mới, không cho bấm ngay từ UI).
+            const isEndingThisMonth = row.hieuLucDen !== null && row.hieuLucDen <= thangCuoi;
             return (
               <tr key={row.congViecId} className="border-b last:border-0">
                 {isGroupStart ? (
@@ -304,53 +320,59 @@ export function ChecksheetTable({
                   </>
                 ) : null}
                 <td className="border border-gray-200 px-2 py-1">{row.loaiHoatDong}</td>
-                {idx === 0 ? (
-                  // Đúng mẫu giấy: "Người chịu trách nhiệm" là 1 người/1 thiết
-                  // bị (không đổi theo từng dòng) -- gộp thành 1 ô duy nhất
-                  // span hết bảng thay vì lặp lại mỗi dòng.
-                  <td
-                    className="border border-gray-200 px-2 py-1 text-center align-middle"
-                    rowSpan={rows.length}
-                  >
-                    {nguoiPhuTrachTen ?? ""}
-                  </td>
-                ) : null}
+                {/* Mục 10: cột "Người chịu trách nhiệm" đã dời lên khối thông
+                    tin đầu trang (cạnh Khu vực/Trưởng ca) -- không còn trong
+                    bảng lưới. */}
                 <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
                   {row.thoiGian ?? ""}
                 </td>
-                <td className="border border-gray-200 px-1 py-1 text-center">
-                  {/* P4/P8: tô Plan mỗi 4/8 ngày bắt đầu từ "ngày vừa bấm" trong
-                      chính hàng này (selectedDay) -- bấm 1 ô ngày trước, rồi bấm
-                      P4/P8. Disable nếu chưa chọn ngày nào trong hàng. */}
-                  <div className="flex justify-center gap-1">
-                    <button
-                      type="button"
-                      className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
-                      disabled={selectedDay?.congViecId !== row.congViecId}
-                      title="Tô Plan mỗi 4 ngày từ ngày đã chọn"
-                      onClick={() =>
-                        selectedDay?.congViecId === row.congViecId &&
-                        onAutoFillPlan(row.congViecId, selectedDay.ngay, 4)
-                      }
-                    >
-                      P4
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
-                      disabled={selectedDay?.congViecId !== row.congViecId}
-                      title="Tô Plan mỗi 8 ngày từ ngày đã chọn"
-                      onClick={() =>
-                        selectedDay?.congViecId === row.congViecId &&
-                        onAutoFillPlan(row.congViecId, selectedDay.ngay, 8)
-                      }
-                    >
-                      P8
-                    </button>
-                  </div>
-                </td>
+                {printMode ? null : (
+                  <td className="border border-gray-200 px-1 py-1 text-center">
+                    {/* P4/P8: tô Plan mỗi 4/8 ngày bắt đầu từ "ngày vừa bấm" trong
+                        chính hàng này (selectedDay) -- bấm 1 ô ngày trước, rồi bấm
+                        P4/P8. Disable nếu chưa chọn ngày nào trong hàng. */}
+                    <div className="flex justify-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                        disabled={selectedDay?.congViecId !== row.congViecId}
+                        title="Tô Plan mỗi 4 ngày từ ngày đã chọn"
+                        onClick={() =>
+                          selectedDay?.congViecId === row.congViecId &&
+                          onAutoFillPlan(row.congViecId, selectedDay.ngay, 4)
+                        }
+                      >
+                        P4
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                        disabled={selectedDay?.congViecId !== row.congViecId}
+                        title="Tô Plan mỗi 8 ngày từ ngày đã chọn"
+                        onClick={() =>
+                          selectedDay?.congViecId === row.congViecId &&
+                          onAutoFillPlan(row.congViecId, selectedDay.ngay, 8)
+                        }
+                      >
+                        P8
+                      </button>
+                    </div>
+                  </td>
+                )}
+                {printMode ? null : (
                 <td className="no-print border border-gray-200 px-1 py-1 text-center">
-                  {pendingCongViecIds.has(row.congViecId) ? (
+                  {isEndingThisMonth ? (
+                    <span
+                      className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                      title={
+                        row.thayTheBoi
+                          ? "Đã duyệt sửa -- giá trị mới áp dụng từ tháng sau, tháng này giữ giá trị cũ"
+                          : "Đã duyệt loại bỏ -- ngừng hiện trên checksheet từ tháng sau"
+                      }
+                    >
+                      {row.thayTheBoi ? "Đổi từ tháng sau" : "Loại bỏ từ tháng sau"}
+                    </span>
+                  ) : pendingCongViecIds.has(row.congViecId) ? (
                     <span
                       className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
                       title="Đề xuất đang chờ Admin duyệt"
@@ -378,6 +400,7 @@ export function ChecksheetTable({
                     </div>
                   ) : null}
                 </td>
+                )}
                 <TanSuatCells row={row} />
                 {days.map((d) => {
                   const cell = thucHien[cellKey(row.congViecId, d)];
