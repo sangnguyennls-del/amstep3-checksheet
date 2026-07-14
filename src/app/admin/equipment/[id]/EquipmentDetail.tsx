@@ -99,10 +99,8 @@ function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiD
         <label className={ui.label}>Xưởng</label>
         <input name="xuong" defaultValue={thietBi.xuong ?? ""} className={inputClass()} />
       </div>
-      <div className="flex flex-col gap-1">
-        <label className={ui.label}>Kíp</label>
-        <input name="kip" defaultValue={thietBi.kip ?? ""} className={inputClass()} />
-      </div>
+      {/* Kíp = Nhóm nhỏ (Kíp N = Nhóm N) -- chỉ nhập "Nhóm nhỏ", action tự
+          suy kip khi lưu (xem equipment.ts updateThietBi). */}
       <div className="flex flex-col gap-1">
         <label className={ui.label}>Nhóm nhỏ</label>
         <input name="nhom" defaultValue={thietBi.nhom ?? ""} className={inputClass()} />

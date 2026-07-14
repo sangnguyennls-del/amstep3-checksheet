@@ -64,10 +64,8 @@ function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
             <label className={ui.label}>Xưởng</label>
             <input name="xuong" className={ui.input} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className={ui.label}>Kíp</label>
-            <input name="kip" className={ui.input} />
-          </div>
+          {/* Kíp/Nhóm nhỏ cùng nghĩa (Kíp N = Nhóm N) -- chỉ nhập "Nhóm nhỏ",
+              action tự suy `kip = 'Kíp ' + nhom` khi lưu (xem equipment.ts). */}
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Nhóm nhỏ</label>
             <input name="nhom" className={ui.input} />
@@ -128,21 +126,20 @@ export function EquipmentList({
   const [isPending, startTransition] = useTransition();
   const nameByMsnv = new Map(users.map((u) => [u.msnv, u.ho_ten]));
 
-  // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Kíp/Nhóm
-  // nhỏ/Nhân viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
+  // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Nhóm nhỏ/
+  // Nhân viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
   // initializer (không phải useEffect) để tránh lint set-state-in-effect.
   // Fix mục 3: chỉ áp mặc định khi giá trị đó thực sự có trong dữ liệu thiết
-  // bị -- hồ sơ có nhom/kip lệch format (vd "1" vs "Kíp 1", hoặc thietbi.nhom
-  // chưa nhập) sẽ mặc định về "Tất cả" thay vì lọc rỗng cả danh sách.
+  // bị -- hồ sơ có nhom lệch/chưa nhập sẽ mặc định về "Tất cả" thay vì lọc
+  // rỗng cả danh sách.
+  // Vòng 2: bỏ bộ lọc Kíp (Kíp = Nhóm nhỏ, chỉ giữ Nhóm nhỏ trên giao diện).
   const initialXuong = defaultIfAvailable(currentUser.xuong, items.map((i) => i.xuong));
-  const initialKip = defaultIfAvailable(currentUser.kip, items.map((i) => i.kip));
   const initialNhom = defaultIfAvailable(currentUser.nhom, items.map((i) => i.nhom));
   const [filterXuong, setFilterXuong] = useState(initialXuong);
-  const [filterKip, setFilterKip] = useState(initialKip);
   const [filterNhom, setFilterNhom] = useState(initialNhom);
   const [filterKhuVuc, setFilterKhuVuc] = useState("");
   // Chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ trách ít
-  // nhất 1 thiết bị khớp Xưởng/Kíp đã mặc định -- nếu không, mặc định về
+  // nhất 1 thiết bị khớp Xưởng/Nhóm đã mặc định -- nếu không, mặc định về
   // msnv sẽ lọc rỗng toàn bộ danh sách (đa số Admin không đứng tên phụ trách
   // thiết bị nào).
   const [filterNguoiPhuTrach, setFilterNguoiPhuTrach] = useState(() => {
@@ -150,21 +147,19 @@ export function EquipmentList({
     const isOwnerOfSomeDevice = items.some(
       (i) =>
         (!initialXuong || i.xuong === initialXuong) &&
-        (!initialKip || i.kip === initialKip) &&
+        (!initialNhom || i.nhom === initialNhom) &&
         i.nguoi_phu_trach === currentUser.msnv,
     );
     return isOwnerOfSomeDevice ? currentUser.msnv : "";
   });
 
   const xuongOptions = uniqueSorted(items.map((i) => i.xuong));
-  const kipOptions = uniqueSorted(items.map((i) => i.kip));
   const nhomOptions = uniqueSorted(items.map((i) => i.nhom));
   const khuVucOptions = uniqueSorted(items.map((i) => i.khu_vuc));
 
   const filteredItems = items.filter(
     (item) =>
       (!filterXuong || item.xuong === filterXuong) &&
-      (!filterKip || item.kip === filterKip) &&
       (!filterNhom || item.nhom === filterNhom) &&
       (!filterKhuVuc || item.khu_vuc === filterKhuVuc) &&
       (!filterNguoiPhuTrach || item.nguoi_phu_trach === filterNguoiPhuTrach),
@@ -193,22 +188,15 @@ export function EquipmentList({
 
       {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
-      {/* Mục 11: bộ lọc gõ-tìm không dấu (SearchableSelect) thay <select>. */}
-      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${ui.card}`}>
+      {/* Mục 11: bộ lọc gõ-tìm không dấu (SearchableSelect) thay <select>.
+          Vòng 2: bỏ bộ lọc Kíp (trùng nghĩa với Nhóm nhỏ). */}
+      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 ${ui.card}`}>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Xưởng</label>
           <SearchableSelect
             value={filterXuong}
             onChange={setFilterXuong}
             options={xuongOptions.map((x) => ({ value: x, label: x }))}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={ui.label}>Kíp</label>
-          <SearchableSelect
-            value={filterKip}
-            onChange={setFilterKip}
-            options={kipOptions.map((k) => ({ value: k, label: k }))}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -244,7 +232,6 @@ export function EquipmentList({
               <th className="px-4 py-2.5">Mã</th>
               <th className="px-4 py-2.5">Tên</th>
               <th className="px-4 py-2.5">Xưởng</th>
-              <th className="px-4 py-2.5">Kíp</th>
               <th className="px-4 py-2.5">Nhóm nhỏ</th>
               <th className="px-4 py-2.5">Người phụ trách</th>
               <th className="px-4 py-2.5">Hành động</th>
@@ -256,7 +243,6 @@ export function EquipmentList({
                 <td className="px-4 py-2.5 font-medium text-gray-900">{item.ma_thiet_bi}</td>
                 <td className="px-4 py-2.5">{item.ten_thiet_bi}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.xuong ?? ""}</td>
-                <td className="px-4 py-2.5 text-gray-600">{item.kip ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.nhom ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">
                   {item.nguoi_phu_trach
@@ -282,7 +268,7 @@ export function EquipmentList({
             ))}
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   {items.length === 0 ? "Chưa có thiết bị nào." : "Không có thiết bị khớp bộ lọc."}
                 </td>
               </tr>

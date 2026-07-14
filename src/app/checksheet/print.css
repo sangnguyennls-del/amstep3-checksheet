@@ -21,9 +21,11 @@
   position: absolute;
   top: 0;
   left: -20000px;
-  /* ~400mm vùng in A3 ngang (420 - 2x10mm margin) ở 96dpi -- printFit.ts có
-     thể ghi đè width/zoom inline khi cần thu nhỏ cho vừa 1 trang. */
-  width: 1511px;
+  /* Bề rộng thiết kế THẬN TRỌNG (~370mm) nằm gọn trong vùng in A3 ngang kể cả
+     khi trình duyệt áp lề mặc định lớn hơn @page 10mm -- đây là lý do bản cũ
+     (1511px, sát mép) bị cắt cột ngày cuối. printFit.ts còn thu nhỏ thêm bằng
+     zoom nếu bảng nhiều dòng vượt chiều cao/rộng trang. */
+  width: 1400px;
   background: #fff;
   /* Màu ô Plan/Actual là background-color -- trình duyệt mặc định BỎ
      background khi in; ép in đúng màu không phụ thuộc checkbox

@@ -23,6 +23,13 @@ function friendlyRoleGuardError(message: string): string {
 // coerce thành 'user' khi ghi DB (`vaiTro || "user"`).
 const VAI_TRO_HOP_LE = ["", "user", "admin", "adminm"];
 
+// Vòng 2: Kíp = Nhóm nhỏ (Kíp N = Nhóm N). Giao diện chỉ nhập "Nhóm nhỏ";
+// cột `kip` (dùng cho duyệt đề xuất theo Nhóm + lịch ca) được suy từ nhom để
+// 2 cột luôn nhất quán. "1" -> "Kíp 1"; rỗng -> null.
+function kipFromNhom(nhom: string): string | null {
+  return nhom ? `Kíp ${nhom}` : null;
+}
+
 export async function createUser(
   _prevState: UserActionState,
   formData: FormData,
@@ -39,7 +46,6 @@ export async function createUser(
   const msnv = String(formData.get("msnv") ?? "").trim();
   const hoTen = String(formData.get("hoTen") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
-  const kip = String(formData.get("kip") ?? "").trim();
   const nhom = String(formData.get("nhom") ?? "").trim();
   const vaiTro = String(formData.get("vaiTro") ?? "").trim();
 
@@ -81,8 +87,8 @@ export async function createUser(
     msnv,
     ho_ten: hoTen,
     xuong: xuong || null,
-    kip: kip || null,
     nhom: nhom || null,
+    kip: kipFromNhom(nhom),
     // Việc 4: lưu song song với email suy ra ở trên (usernameToEmail) để
     // resolve_login_email (migration 0012) tra được -- không đổi cách sinh
     // email, chỉ thêm 1 cột đọc được cho luồng đăng nhập bằng MSNV/username.
@@ -114,7 +120,6 @@ export async function updateUser(
   const id = String(formData.get("id") ?? "");
   const hoTen = String(formData.get("hoTen") ?? "").trim();
   const xuong = String(formData.get("xuong") ?? "").trim();
-  const kip = String(formData.get("kip") ?? "").trim();
   const nhom = String(formData.get("nhom") ?? "").trim();
   const vaiTro = String(formData.get("vaiTro") ?? "").trim();
 
@@ -134,8 +139,8 @@ export async function updateUser(
     .update({
       ho_ten: hoTen,
       xuong: xuong || null,
-      kip: kip || null,
       nhom: nhom || null,
+      kip: kipFromNhom(nhom),
       vai_tro: vaiTro || "user",
     })
     .eq("id", id);

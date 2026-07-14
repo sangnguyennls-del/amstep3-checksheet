@@ -80,10 +80,8 @@ function CreateUserForm({ currentUserVaiTro }: { currentUserVaiTro: "admin" | "a
             <label className={ui.label}>Xưởng</label>
             <input name="xuong" className={ui.input} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className={ui.label}>Kíp</label>
-            <input name="kip" className={ui.input} />
-          </div>
+          {/* Kíp = Nhóm nhỏ (Kíp N = Nhóm N) -- chỉ nhập "Nhóm nhỏ", action
+              tự suy kip khi lưu (xem users.ts). */}
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Nhóm nhỏ</label>
             <input name="nhom" className={ui.input} />
@@ -137,10 +135,6 @@ function EditUserDialog({
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Xưởng</label>
             <input name="xuong" defaultValue={user.xuong ?? ""} className={ui.input} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={ui.label}>Kíp</label>
-            <input name="kip" defaultValue={user.kip ?? ""} className={ui.input} />
           </div>
           <div className="flex flex-col gap-1">
             <label className={ui.label}>Nhóm nhỏ</label>
@@ -230,18 +224,16 @@ export function UsersTable({
   const [isPending, startTransition] = useTransition();
 
   const [filterXuong, setFilterXuong] = useState("");
-  const [filterKip, setFilterKip] = useState("");
   const [filterNhom, setFilterNhom] = useState("");
   const [filterVaiTro, setFilterVaiTro] = useState("");
 
   const xuongOptions = uniqueSorted(users.map((u) => u.xuong));
-  const kipOptions = uniqueSorted(users.map((u) => u.kip));
   const nhomOptions = uniqueSorted(users.map((u) => u.nhom));
 
+  // Vòng 2: bỏ lọc Kíp (Kíp = Nhóm nhỏ, chỉ giữ Nhóm nhỏ trên giao diện).
   const filteredUsers = users.filter(
     (u) =>
       (!filterXuong || u.xuong === filterXuong) &&
-      (!filterKip || u.kip === filterKip) &&
       (!filterNhom || u.nhom === filterNhom) &&
       (!filterVaiTro || (u.vai_tro ?? "user") === filterVaiTro),
   );
@@ -266,22 +258,14 @@ export function UsersTable({
       {deleteError ? <p className={`mb-3 ${ui.errorText}`}>{deleteError}</p> : null}
 
       {/* Mục 11: bộ lọc gõ-tìm không dấu (SearchableSelect); riêng Vai trò
-          chỉ có 3 giá trị cố định nên giữ <select> thuần. */}
-      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 ${ui.card}`}>
+          chỉ có 3 giá trị cố định nên giữ <select> thuần. Vòng 2: bỏ lọc Kíp. */}
+      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 ${ui.card}`}>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Xưởng</label>
           <SearchableSelect
             value={filterXuong}
             onChange={setFilterXuong}
             options={xuongOptions.map((x) => ({ value: x, label: x }))}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={ui.label}>Kíp</label>
-          <SearchableSelect
-            value={filterKip}
-            onChange={setFilterKip}
-            options={kipOptions.map((k) => ({ value: k, label: k }))}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -310,7 +294,6 @@ export function UsersTable({
               <th className="px-4 py-2.5">MSNV</th>
               <th className="px-4 py-2.5">Họ tên</th>
               <th className="px-4 py-2.5">Xưởng</th>
-              <th className="px-4 py-2.5">Kíp</th>
               <th className="px-4 py-2.5">Nhóm nhỏ</th>
               <th className="px-4 py-2.5">Vai trò</th>
               <th className="px-4 py-2.5">Hành động</th>
@@ -322,7 +305,6 @@ export function UsersTable({
                 <td className="px-4 py-2.5 font-medium text-gray-900">{u.msnv}</td>
                 <td className="px-4 py-2.5">{u.ho_ten}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.xuong ?? ""}</td>
-                <td className="px-4 py-2.5 text-gray-600">{u.kip ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{u.nhom ?? ""}</td>
                 <td className="px-4 py-2.5">
                   <span
@@ -367,7 +349,7 @@ export function UsersTable({
             ))}
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   {users.length === 0 ? "Chưa có người dùng nào." : "Không có người dùng khớp bộ lọc."}
                 </td>
               </tr>

@@ -21,6 +21,14 @@ function optionalText(formData: FormData, key: string): string | null {
   return v || null;
 }
 
+// Vòng 2: Kíp = Nhóm nhỏ (Kíp N = Nhóm N). Giao diện chỉ nhập "Nhóm nhỏ";
+// cột `kip` (còn dùng cho duyệt đề xuất `can_approve_congviec_change` + lịch
+// ca) được suy ra từ nhom để dữ liệu 2 cột luôn nhất quán. nhom "1" -> kip
+// "Kíp 1"; nếu nhom rỗng thì kip null.
+function kipFromNhom(nhom: string | null): string | null {
+  return nhom ? `Kíp ${nhom}` : null;
+}
+
 // ---------------------------------------------------------------------------
 // THIETBI
 // ---------------------------------------------------------------------------
@@ -42,6 +50,7 @@ export async function createThietBi(
     return { error: "Vui lòng nhập Mã thiết bị và Tên thiết bị" };
   }
 
+  const nhom = optionalText(formData, "nhom");
   const supabase = await createClient();
   const { error } = await supabase.from("thietbi").insert({
     ma_thiet_bi: maThietBi,
@@ -49,8 +58,8 @@ export async function createThietBi(
     cum: optionalText(formData, "cum"),
     khu_vuc: optionalText(formData, "khuVuc"),
     xuong: optionalText(formData, "xuong"),
-    kip: optionalText(formData, "kip"),
-    nhom: optionalText(formData, "nhom"),
+    nhom,
+    kip: kipFromNhom(nhom),
     lanh_dao: optionalText(formData, "lanhDao"),
     truong_ca: optionalText(formData, "truongCa"),
     nguoi_phu_trach: optionalText(formData, "nguoiPhuTrach"),
@@ -82,6 +91,7 @@ export async function updateThietBi(
     return { error: "Thiếu dữ liệu cần thiết" };
   }
 
+  const nhom = optionalText(formData, "nhom");
   const supabase = await createClient();
   const { error } = await supabase
     .from("thietbi")
@@ -91,8 +101,8 @@ export async function updateThietBi(
       cum: optionalText(formData, "cum"),
       khu_vuc: optionalText(formData, "khuVuc"),
       xuong: optionalText(formData, "xuong"),
-      kip: optionalText(formData, "kip"),
-      nhom: optionalText(formData, "nhom"),
+      nhom,
+      kip: kipFromNhom(nhom),
       lanh_dao: optionalText(formData, "lanhDao"),
       truong_ca: optionalText(formData, "truongCa"),
       nguoi_phu_trach: optionalText(formData, "nguoiPhuTrach"),
