@@ -41,6 +41,16 @@
 
 .print-sheet .overflow-x-auto {
   overflow: visible !important;
+  /* Bỏ viền + bo góc của KHUNG bọc bảng khi in. Lý do (lỗi "đường kẻ dọc đen
+     ở ~cột 28"): Tailwind v4 để class `border` trơn (ChecksheetTable.tsx, div
+     bọc bảng) = `currentColor` = --foreground #1d1d1f (gần đen), KHÁC v3 vốn
+     mặc định xám nhạt. Bản in dùng PRINT_COL_WIDTHS cố định (tổng ~1294px) rộng
+     hơn khung bọc (~1216px) + overflow:visible -> bảng TRÀN qua viền phải near-
+     black của khung, tạo 1 đường dọc đen cắt ngang bảng ở ~cột 28 (và viền trái
+     ở mép). Lưới ô đã có viền `border-gray-200` riêng nên bỏ viền khung không
+     mất đường bao. */
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 /* Ô ngày trong bản in: bỏ min-width 32px cứng của CSS module (nguyên nhân
