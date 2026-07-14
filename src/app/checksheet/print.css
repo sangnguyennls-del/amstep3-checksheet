@@ -80,6 +80,14 @@
   .print-area {
     border: none !important;
     overflow: visible !important;
+    /* Căn GIỮA bản in trên trang. Vì bao thu-nhỏ tính theo khổ DỌC-an toàn
+       (~1009px, để in khổ dọc không tràn -- xem printFit.ts), khi đích in ra
+       khổ NGANG thì bảng chỉ chiếm ~2/3 bề ngang trang; nếu để .print-sheet
+       (block) dồn trái sẽ chừa mảng trắng lớn bên phải, nhìn lệch. Flex
+       justify-center chia đều lề 2 bên cho cân đối ở cả 2 hướng giấy. */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
   }
 
   .print-sheet {
