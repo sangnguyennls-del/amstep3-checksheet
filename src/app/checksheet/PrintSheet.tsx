@@ -12,6 +12,7 @@
 import { AppLogo } from "@/components/AppLogo";
 import type { CongViecRow, FilterOptions, ThucHienMap } from "@/lib/checksheet/types";
 import { ChecksheetTable } from "./ChecksheetTable";
+import { LanCapNhatCuoi } from "./LanCapNhatCuoi";
 import { toDriveImageSrc } from "./EquipmentImageModal";
 import checksheetStyles from "./checksheet.module.css";
 
@@ -132,6 +133,7 @@ export function PrintSheet({
             onSelectDay={noop}
             onAutoFillPlan={noop}
           />
+          <LanCapNhatCuoi thucHien={thucHien} />
         </div>
       </div>
     </div>

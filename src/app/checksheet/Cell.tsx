@@ -12,6 +12,19 @@ export type PaintOp =
   | { kind: "plan"; keHoach: boolean }
   | { kind: "act"; ketQua: KetQua };
 
+/**
+ * Chế độ tô do thanh công cụ chọn (ChecksheetApp) -- THAY cho chu trình bấm
+ * vòng cũ `N -> G -> R -> N`.
+ *
+ * Vì sao bỏ chu trình: từ "G" bấm tiếp sẽ ra "R", mà "R" bắt buộc mở modal nhập
+ * mô tả và KHÔNG đổi state nếu người dùng bấm Huỷ -> ô kẹt ở "G", không có
+ * đường nào về ô trống nếu không tạo một bất thường GIẢ (bảng bat_thuong giữ
+ * lịch sử, không xoá -> rác vĩnh viễn). Đây là ngõ cụt, không chỉ chậm.
+ *
+ * "G" = tô xanh, "R" = ghi nhận bất thường, "N" = xoá ô về trống.
+ */
+export type PaintMode = "G" | "R" | "N";
+
 function planClass(keHoach: boolean): string {
   return keHoach ? styles.bgY : styles.bgN;
 }
@@ -29,20 +42,20 @@ function actClass(ketQua: KetQua): string {
  * hệ cũ: lấy `getBoundingClientRect()` của ô, x,y = toạ độ con trỏ trừ góc
  * trên-trái, `isPlanZone = x*h > y*w` (w,h = width/height của ô).
  *
- * Click vào vùng Plan: toggle Y/N (click 1 cái = Y, click lại = N).
- * Click vào vùng Actual: Task 4 mở rộng chu trình click thường thành
- * N -> G -> R -> N (Task 2 trước đó chỉ có N <-> G). Khi kết quả SẮP đổi
- * thành "R", KHÔNG dispatch `onSetAct` trực tiếp (khác Plan/Actual G/N vốn
- * OPTIMISTIC: tô ngay rồi Lưu sau) -- thay vào đó gọi `onRequestBatThuong` để
- * `ChecksheetApp` mở modal nhập mô tả bất thường; ô CHỈ thực sự chuyển sang
- * "R" sau khi modal gọi RPC `set_ket_qua_r_with_bat_thuong` thành công (xem
- * ChecksheetApp.tsx, action `applyBatThuong` ở gridReducer.ts). Vì vậy khi
- * next="R", `applyZone` trả về `null` (không có PaintOp) -- không bắt đầu
- * kéo-tô hàng loạt "R" qua nhiều ô (mỗi ô R cần 1 mô tả riêng, không thể áp
- * lại y hệt 1 giá trị cho nhiều ô như kéo-tô Plan/G/N).
- * Đổi NGƯỢC LẠI từ "R" về "N" (click tiếp trên 1 ô đang đỏ) vẫn đi qua
- * `onSetAct` bình thường -- đây là đổi khỏi "R", không phải đặt "R" mới, nên
- * không bị RPC `upsert_thuc_hien` chặn (chỉ chặn gửi ket_qua="R").
+ * Click vào vùng Plan: toggle Y/N (click 1 cái = Y, click lại = N) -- TRỪ chế
+ * độ tô "N" (Xoá) thì luôn đặt về N.
+ * Click vào vùng Actual: đặt thẳng giá trị theo `paintMode` (xem PaintMode) --
+ * KHÔNG còn bấm vòng N->G->R->N.
+ *
+ * Riêng "R" giữ nguyên cơ chế KHÔNG optimistic (khác Plan/Actual G/N vốn tô
+ * ngay rồi Lưu sau): gọi `onRequestBatThuong` để `ChecksheetApp` mở modal nhập
+ * mô tả; ô CHỈ thực sự chuyển sang "R" sau khi modal gọi RPC
+ * `set_ket_qua_r_with_bat_thuong` thành công (xem action `applyBatThuong` ở
+ * gridReducer.ts). Vì vậy nhánh R trả `null` (không có PaintOp) -- không kéo-tô
+ * hàng loạt "R" (mỗi ô R cần 1 mô tả riêng).
+ * Đặt "N" lên 1 ô đang "R" vẫn đi qua `onSetAct` bình thường -- đây là đổi KHỎI
+ * "R", không phải đặt "R" mới, nên không bị RPC `upsert_thuc_hien` chặn (chỉ
+ * chặn gửi ket_qua="R").
  */
 export function Cell({
   congViecId,
@@ -56,11 +69,15 @@ export function Cell({
   onPaintStart,
   onPaintEnter,
   onSelectDay,
+  paintMode = "G",
 }: {
   congViecId: string;
   ngay: string;
   cell: ThucHienCell | undefined;
   editable: { plan: boolean; act: boolean };
+  /** Chế độ tô đang chọn trên thanh công cụ. Mặc định "G" để PrintSheet/
+   * BatchPrint (bản in, không tương tác) không phải truyền. */
+  paintMode?: PaintMode;
   /** Hôm nay (ISO, "YYYY-MM-DD") -- dùng cùng `isWithinActWindow` CHỈ để tô
    * nhạt/gợi ý vùng Actual ngoài cửa sổ +-4 ngày, KHÔNG chặn click (quyết
    * định thật là status trả về từ upsert_thuc_hien, xem actWindow.ts). */
@@ -91,22 +108,29 @@ export function Cell({
   function applyZone(planZone: boolean): PaintOp | null {
     if (planZone) {
       if (!editable.plan) return null;
-      const nextKeHoach = !value.keHoach;
+      // Chế độ Xoá xoá cả vùng Kế hoạch (đúng nghĩa "xoá ô"); các chế độ khác
+      // giữ bật/tắt Y/N như cũ -- Plan chỉ có 2 trạng thái nên không có ngõ cụt.
+      const nextKeHoach = paintMode === "N" ? false : !value.keHoach;
       onSetPlan(congViecId, ngay, nextKeHoach);
       return { kind: "plan", keHoach: nextKeHoach };
-    } else {
-      if (!editable.act) return null;
-      // Chu trình N -> G -> R -> N.
-      const nextKetQua: KetQua = value.ketQua === "N" ? "G" : value.ketQua === "G" ? "R" : "N";
-      if (nextKetQua === "R") {
-        // KHÔNG optimistic: chờ modal bất thường xác nhận RPC thành công rồi
-        // mới đổi state (xem docstring hàm Cell).
-        onRequestBatThuong(congViecId, ngay);
-        return null;
-      }
-      onSetAct(congViecId, ngay, nextKetQua);
-      return { kind: "act", ketQua: nextKetQua };
     }
+
+    if (!editable.act) return null;
+
+    if (paintMode === "R") {
+      // Ô đã đỏ rồi thì KHÔNG mở modal lần nữa: bat_thuong.thuchien_id là
+      // UNIQUE (0-1 bản ghi/ô) nên ghi nhận lần 2 trên cùng ô sẽ lỗi DB. Chu
+      // trình bấm vòng cũ không bao giờ đi R->R nên chưa từng lộ ra.
+      if (value.ketQua === "R") return null;
+      // KHÔNG optimistic: chờ modal xác nhận RPC thành công rồi mới đổi state
+      // (xem docstring hàm Cell).
+      onRequestBatThuong(congViecId, ngay);
+      return null;
+    }
+
+    const nextKetQua: KetQua = paintMode;
+    onSetAct(congViecId, ngay, nextKetQua);
+    return { kind: "act", ketQua: nextKetQua };
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {

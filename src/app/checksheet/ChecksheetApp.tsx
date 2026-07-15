@@ -6,6 +6,7 @@ import { getCongViecRows, getThucHien, parseNhanVienMsnv } from "@/lib/checkshee
 import { getEditability, type EditabilityMap } from "@/lib/checksheet/editability";
 import { gridReducer, initialGridState } from "@/lib/checksheet/gridReducer";
 import { CHECKSHEET_SAVED_EVENT } from "@/lib/checksheet/notifications";
+import { getViecChuaLam, type ViecChuaLam } from "@/lib/checksheet/nhacViec";
 import { cellKey, type CongViecRow, type FilterOptions, type KetQua } from "@/lib/checksheet/types";
 import { vnTodayIso } from "@/lib/checksheet/vnDate";
 import { defaultIfAvailable, formatThietBiLabel } from "@/lib/filters";
@@ -13,6 +14,10 @@ import { ui } from "@/lib/ui";
 import { AppLogo } from "@/components/AppLogo";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { ChecksheetTable, listDaysInRange } from "./ChecksheetTable";
+import type { PaintMode } from "./Cell";
+import { LanCapNhatCuoi } from "./LanCapNhatCuoi";
+import { NhacViecModal } from "./NhacViecModal";
+import { PaintModeBar } from "./PaintModeBar";
 import { PrintSheet } from "./PrintSheet";
 import { buildPrintTitle, fitPrintSheetToPage } from "./printFit";
 import { BatThuongModal } from "./BatThuongModal";
@@ -150,6 +155,14 @@ export function ChecksheetApp({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [rejectedCells, setRejectedCells] = useState<RejectedCell[]>([]);
+  // Chế độ tô cho vùng Thực tế (thanh PaintModeBar) -- thay chu trình bấm vòng
+  // N->G->R->N cũ vốn làm ô kẹt ở "G" (xem PaintMode trong Cell.tsx). Mặc định
+  // "G" vì tô xanh là thao tác thường dùng nhất.
+  const [paintMode, setPaintMode] = useState<PaintMode>("G");
+  // Popup nhắc việc chưa thực hiện -- tính 1 lần trong handleLoad (mỗi lần load
+  // 1 thiết bị/tháng), không đặt trong useEffect để không bật lại mỗi re-render.
+  const [nhacViec, setNhacViec] = useState<ViecChuaLam[]>([]);
+  const [nhacViecOpen, setNhacViecOpen] = useState(false);
   // "Ngày vừa bấm" trong 1 hàng cụ thể -- mốc bắt đầu cho nút P4/P8 auto-fill
   // của hàng đó (xem ChecksheetTable/Cell.onSelectDay).
   const [selectedDay, setSelectedDay] = useState<{ congViecId: string; ngay: string } | null>(
@@ -295,6 +308,19 @@ export function ChecksheetApp({
       setEditability(editabilityMap);
       setSelectedDay(null);
       setLoadedFor(`${thietBiId}_${monthValue}`);
+
+      // Nhắc việc: CHỈ nhắc đúng người phụ trách thiết bị (admin/người khác xem
+      // hộ thì không bị làm phiền) và chỉ khi còn việc đã tới hạn mà chưa tô
+      // xanh trong cửa sổ 4 ngày -- xem getViecChuaLam. Tháng cũ tự nhiên không
+      // có việc nào lọt điều kiện nên không popup.
+      const thietBi = filterOptions.thietBi.find((tb) => tb.id === thietBiId);
+      const laNguoiPhuTrach =
+        !!currentUser.msnv && !!thietBi && thietBi.nguoiPhuTrach === currentUser.msnv;
+      const viec = laNguoiPhuTrach
+        ? getViecChuaLam(congViecRows, map, vnTodayIso(), listDaysInRange(thangDau, thangCuoi))
+        : [];
+      setNhacViec(viec);
+      setNhacViecOpen(viec.length > 0);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Không tải được dữ liệu checksheet");
     } finally {
@@ -734,7 +760,8 @@ export function ChecksheetApp({
 
       {showTable ? (
         <>
-          <div className="no-print mb-3 flex items-center justify-between">
+          <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-3">
+            <PaintModeBar value={paintMode} onChange={setPaintMode} />
             <p className={`text-sm ${hasDirty ? "font-medium text-amber-700" : "text-gray-500"}`}>
               {hasDirty
                 ? `${gridState.dirty.size} ô đã đổi, chưa lưu.`
@@ -860,7 +887,9 @@ export function ChecksheetApp({
                 selectedDay={selectedDay}
                 onSelectDay={handleSelectDay}
                 onAutoFillPlan={autoFillPlan}
+                paintMode={paintMode}
               />
+              <LanCapNhatCuoi thucHien={gridState.cells} />
             </div>
           </div>
         </>
@@ -879,6 +908,12 @@ export function ChecksheetApp({
           onSuccess={handleBatThuongSuccess}
         />
       ) : null}
+
+      <NhacViecModal
+        open={nhacViecOpen}
+        viec={nhacViec}
+        onClose={() => setNhacViecOpen(false)}
+      />
 
       <EquipmentImageModal
         open={imageModalOpen}

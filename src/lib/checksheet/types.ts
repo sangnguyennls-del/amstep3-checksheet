@@ -35,6 +35,12 @@ export type ThucHienCell = {
   // riêng 1 API cho từng ô. undefined/null nếu ô không phải "R" hoặc chưa tải
   // join (vd vừa applyBatThuong ở gridReducer, xem BatThuongModal.tsx).
   batThuongMoTa?: string | null;
+  // Người sửa ô gần nhất (thuc_hien.nguoi_thuc_hien = MSNV, do RPC
+  // upsert_thuc_hien/set_ket_qua_r_with_bat_thuong ghi) + họ tên join từ
+  // nguoidung. Dùng cho dòng "Lần chỉnh sửa cuối ... bởi ..." (getLanCapNhatCuoi
+  // ở nhacViec.ts). undefined/null với ô sửa optimistic chưa lưu.
+  nguoiThucHien?: string | null;
+  nguoiThucHienTen?: string | null;
 };
 
 // Map "CV00001_2026-07-15" -> ThucHienCell

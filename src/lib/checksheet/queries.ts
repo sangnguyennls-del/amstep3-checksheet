@@ -205,6 +205,11 @@ type ThucHienJoinRow = {
   ke_hoach: boolean;
   ket_qua: "G" | "R" | "N";
   updated_at: string;
+  nguoi_thuc_hien: string | null;
+  // Embed xuôi theo FK `thuc_hien.nguoi_thuc_hien -> nguoidung(msnv)`
+  // (0001_schema.sql) để lấy họ tên cho dòng "Lần chỉnh sửa cuối ... bởi ...".
+  // Cùng dạng object|mảng-1-phần-tử như bat_thuong -> dùng chung firstOrNull().
+  nguoidung: { ho_ten: string } | { ho_ten: string }[] | null;
   // Embed ngược từ `thuc_hien` sang `bat_thuong` (FK nằm ở bat_thuong.thuchien_id,
   // unique -- xem 0001_schema.sql) -- Task 4: chỉ có giá trị (0 hoặc 1 phần tử)
   // khi ket_qua='R' và đã có bản ghi bat_thuong tương ứng. PostgREST trả embed
@@ -228,7 +233,9 @@ export async function getThucHien(
 
   const { data, error } = await supabase
     .from("thuc_hien")
-    .select("id, congviec_id, ngay, ke_hoach, ket_qua, updated_at, bat_thuong(mo_ta, trang_thai)")
+    .select(
+      "id, congviec_id, ngay, ke_hoach, ket_qua, updated_at, nguoi_thuc_hien, nguoidung(ho_ten), bat_thuong(mo_ta, trang_thai)",
+    )
     .in("congviec_id", congViecIds)
     .gte("ngay", thangDau)
     .lte("ngay", thangCuoi);
@@ -240,12 +247,15 @@ export async function getThucHien(
   const map: ThucHienMap = {};
   for (const r of rows) {
     const batThuong = firstOrNull(r.bat_thuong);
+    const nguoiDung = firstOrNull(r.nguoidung);
     map[cellKey(r.congviec_id, r.ngay)] = {
       id: r.id,
       keHoach: r.ke_hoach,
       ketQua: r.ket_qua,
       updatedAt: r.updated_at,
       batThuongMoTa: batThuong?.mo_ta ?? null,
+      nguoiThucHien: r.nguoi_thuc_hien,
+      nguoiThucHienTen: nguoiDung?.ho_ten ?? null,
     };
   }
   return map;

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { cellKey, type CongViecRow, type KetQua, type ThucHienMap } from "@/lib/checksheet/types";
 import type { EditabilityMap } from "@/lib/checksheet/editability";
 import { stripDiacritics } from "@/lib/filters";
-import { Cell, type PaintOp } from "./Cell";
+import { Cell, type PaintMode, type PaintOp } from "./Cell";
 
 const DENY_EDITABLE = { plan: false, act: false };
 
@@ -141,6 +141,7 @@ export function ChecksheetTable({
   onSelectDay,
   onAutoFillPlan,
   printMode = false,
+  paintMode = "G",
 }: {
   rows: CongViecRow[];
   thucHien: ThucHienMap;
@@ -173,11 +174,25 @@ export function ChecksheetTable({
    * fixed: cột bị ẩn nhưng slot bề rộng vẫn được phân bổ lệch), dùng bộ bề
    * rộng cột gọn PRINT_COL_WIDTHS. Chỉ PrintSheet bật cờ này. */
   printMode?: boolean;
+  /** Chế độ tô đang chọn trên thanh công cụ (ChecksheetApp) -- truyền thẳng
+   * xuống Cell. Mặc định "G" để PrintSheet/BatchPrint khỏi phải truyền. */
+  paintMode?: PaintMode;
 }) {
   const rowSpans = calcRowSpans(rows);
   const days = listDaysInRange(thangDau, thangCuoi);
   const [namNam, thangNam] = thangDau.split("-").map(Number);
   const colWidths = printMode ? PRINT_COL_WIDTHS : COL_WIDTHS;
+
+  // Dòng tổng cuối bảng. Tổng theo ngày tính theo KẾ HOẠCH (cờ vàng) = thời
+  // gian DỰ KIẾN của ngày đó -- quyết định người dùng 2026-07-14 (khớp mẫu giấy
+  // cũ: ảnh chỉ có cờ vàng mà vẫn ra số).
+  const tongThoiGianBang = rows.reduce((sum, r) => sum + (r.thoiGian ?? 0), 0);
+  const tongTheoNgay = days.map((d) =>
+    rows.reduce(
+      (sum, r) => (thucHien[cellKey(r.congViecId, d)]?.keHoach ? sum + (r.thoiGian ?? 0) : sum),
+      0,
+    ),
+  );
 
   // Kéo-tô: isPaintingRef bật khi pointerdown trên 1 ô, tắt khi pointerup ở
   // bất kỳ đâu (kể cả ngoài bảng) hoặc window mất focus -- currentOpRef lưu
@@ -419,6 +434,7 @@ export function ChecksheetTable({
                         onPaintStart={handlePaintStart}
                         onPaintEnter={() => handlePaintEnter(row.congViecId, d)}
                         onSelectDay={onSelectDay}
+                        paintMode={paintMode}
                       />
                     </td>
                   );
@@ -427,6 +443,32 @@ export function ChecksheetTable({
             );
           })}
         </tbody>
+        <tfoot className="bg-amber-100 font-medium text-gray-900">
+          <tr>
+            {/* 4 cột trái (Số, Tên chi tiết, Điều kiện cơ bản, Tiêu chuẩn) gộp
+                làm nhãn; cột "Thời gian" hiện tổng 1 vòng đầy đủ. */}
+            <th colSpan={4} className="border border-gray-200 px-2 py-1 text-right">
+              TỔNG THỜI GIAN CHĂM SÓC (PHÚT)
+            </th>
+            <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
+              {tongThoiGianBang || ""}
+            </td>
+            {/* Auto + Thao tác chỉ tồn tại ở bản MÀN HÌNH (printMode bỏ 2 cột
+                này) -- phải theo cùng điều kiện với thead/tbody, nếu hardcode
+                colSpan thì bản in sẽ lệch cột. */}
+            {printMode ? null : <td className="border border-gray-200" />}
+            {printMode ? null : <td className="no-print border border-gray-200" />}
+            <td colSpan={TAN_SUAT_COLUMNS.length} className="border border-gray-200" />
+            {tongTheoNgay.map((tong, idx) => (
+              <td
+                key={days[idx]}
+                className="border border-gray-200 px-1 py-1 text-center tabular-nums"
+              >
+                {tong || ""}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
