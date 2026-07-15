@@ -7,20 +7,31 @@
 import { getLanCapNhatCuoi } from "@/lib/checksheet/nhacViec";
 import type { ThucHienMap } from "@/lib/checksheet/types";
 
-/** ISO timestamp -> "dd/MM/yyyy HH:mm:ss" theo giờ VN. */
+/**
+ * ISO timestamp -> "dd/MM/yyyy HH:mm:ss" theo giờ VN.
+ *
+ * Ghép tay từ formatToParts thay vì toLocaleString(): locale "vi-VN" trả GIỜ
+ * TRƯỚC NGÀY ("15:03:19 15/07/2026"), không khớp mẫu phiếu ("10/07/2026
+ * 09:44:23"). Ghép tay thì thứ tự cố định, không phụ thuộc locale/runtime.
+ */
 function thoiDiemVn(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("vi-VN", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}:${p.second}`;
 }
 
 export function LanCapNhatCuoi({ thucHien }: { thucHien: ThucHienMap }) {
