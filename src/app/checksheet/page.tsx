@@ -30,7 +30,7 @@ export default async function ChecksheetPage() {
 
   return (
     <>
-      <header className="no-print sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
+      <header className="no-print sticky top-0 z-10 border-b border-[#dee2e6] bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3">
             <AppLogo heightPx={32} />

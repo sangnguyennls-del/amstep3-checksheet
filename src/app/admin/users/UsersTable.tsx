@@ -124,7 +124,7 @@ function EditUserDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-xl border border-[#dee2e6] bg-white p-5 shadow-xl">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Sửa người dùng {user.msnv}</h2>
         <form action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={user.id} />
@@ -175,7 +175,7 @@ function ResetPasswordDialog({ user, onClose }: { user: UserRow; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-[2px]">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl border border-[#dee2e6] bg-white p-5 shadow-xl">
         <h2 className="mb-4 text-base font-semibold text-gray-900">
           Đặt lại mật khẩu cho {user.msnv}
         </h2>
@@ -289,7 +289,7 @@ export function UsersTable({
 
       <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
+          <thead className="border-b border-[#dee2e6] bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
               <th className="px-4 py-2.5">MSNV</th>
               <th className="px-4 py-2.5">Họ tên</th>
@@ -312,7 +312,7 @@ export function UsersTable({
                       u.vai_tro === "adminm"
                         ? "rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700"
                         : u.vai_tro === "admin"
-                          ? "rounded-full bg-[#0066cc]/10 px-2 py-0.5 text-xs font-medium text-[#0066cc]"
+                          ? "rounded-md bg-[#0d6efd]/10 px-2 py-0.5 text-xs font-medium text-[#0d6efd]"
                           : "rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
                     }
                   >

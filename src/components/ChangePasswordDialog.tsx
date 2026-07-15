@@ -17,7 +17,7 @@ function ChangePasswordForm({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl border border-[#dee2e6] bg-white p-5 shadow-xl">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Đổi mật khẩu</h2>
         <form action={formAction} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">

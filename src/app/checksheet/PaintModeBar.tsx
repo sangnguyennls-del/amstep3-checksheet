@@ -37,10 +37,14 @@ export function PaintModeBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-gray-500">Chế độ tô:</span>
-      <div className="flex flex-wrap gap-1.5">
-        {MODES.map(({ mode, nhan, oMau, moTa }) => {
+      <span className="text-xs font-bold tracking-wide text-[#6c757d] uppercase">Chế độ tô:</span>
+      {/* btn-group kiểu Bootstrap: 3 nút liền khối, chỉ bo góc 2 đầu, viền giữa
+          gộp bằng -ml-px (xem DESIGN.md). */}
+      <div className="inline-flex" role="group">
+        {MODES.map(({ mode, nhan, oMau, moTa }, i) => {
           const dangChon = value === mode;
+          const dau = i === 0;
+          const cuoi = i === MODES.length - 1;
           return (
             <button
               key={mode}
@@ -49,13 +53,15 @@ export function PaintModeBar({
               title={moTa}
               onClick={() => onChange(mode)}
               // min-h-10: vùng chạm đủ lớn trên điện thoại (quy tắc CLAUDE.md).
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors ${
+              className={`inline-flex min-h-10 items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors focus:z-10 focus:ring-4 focus:ring-[#0d6efd]/25 focus:outline-none ${
+                dau ? "rounded-l-md" : "-ml-px"
+              } ${cuoi ? "rounded-r-md" : ""} ${
                 dangChon
-                  ? "border-gray-900 bg-gray-900 font-medium text-white"
-                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  ? "z-10 border-[#0d6efd] bg-[#0d6efd] font-semibold text-white"
+                  : "border-[#0d6efd] bg-white text-[#0d6efd] hover:bg-[#0d6efd]/10"
               }`}
             >
-              <span className={`inline-block h-3.5 w-3.5 rounded-sm border border-gray-400 ${oMau}`} />
+              <span className={`inline-block h-3.5 w-3.5 rounded-sm border border-[#212529]/25 ${oMau}`} />
               {nhan}
             </button>
           );

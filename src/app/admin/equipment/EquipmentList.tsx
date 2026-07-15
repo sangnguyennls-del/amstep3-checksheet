@@ -227,7 +227,7 @@ export function EquipmentList({
 
       <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
+          <thead className="border-b border-[#dee2e6] bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
               <th className="px-4 py-2.5">Mã</th>
               <th className="px-4 py-2.5">Tên</th>

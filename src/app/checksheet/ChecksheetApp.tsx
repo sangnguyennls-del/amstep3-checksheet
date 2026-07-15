@@ -28,12 +28,31 @@ import "./print.css";
 
 type ThietBiOption = FilterOptions["thietBi"][number];
 
-/** 1 ô nhãn/giá trị trong khối thông tin đầu trang (đúng bố cục mẫu giấy). */
-function InfoField({ label, value }: { label: string; value: string | null | undefined }) {
+/**
+ * 1 ô nhãn/giá trị trong khối thông tin đầu trang (đúng bố cục mẫu giấy).
+ * Phong cách bản GAS cũ: nhãn CHỮ HOA nhỏ kèm icon, giá trị in đậm bên dưới;
+ * `accent` tô xanh cho giá trị cần nổi bật (mã thiết bị) -- xem DESIGN.md.
+ */
+function InfoField({
+  label,
+  value,
+  icon,
+  accent = false,
+}: {
+  label: string;
+  value: string | null | undefined;
+  icon?: string;
+  accent?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-[11px] tracking-wide text-gray-500 uppercase">{label}</dt>
-      <dd className="text-sm font-medium text-gray-900">{value || "-"}</dd>
+      <dt className="flex items-center gap-1 text-[11px] font-bold tracking-wide text-[#6c757d] uppercase">
+        {icon ? <span aria-hidden="true">{icon}</span> : null}
+        {label}
+      </dt>
+      <dd className={`text-sm font-semibold ${accent ? "text-[#0d6efd]" : "text-[#212529]"}`}>
+        {value || "-"}
+      </dd>
     </div>
   );
 }
@@ -800,7 +819,7 @@ export function ChecksheetApp({
                   thangCuoi={thangCuoi}
                   todayIso={todayIso}
                 />
-              <div className="no-print mb-3 rounded-lg border border-gray-200 bg-white p-4">
+              <div className="no-print mb-3 rounded-lg border border-[#dee2e6] bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <AppLogo heightPx={40} />
@@ -817,21 +836,27 @@ export function ChecksheetApp({
                       trách nhiệm" lên cùng hàng với Khu vực/Trưởng ca -- cột
                       tương ứng trong bảng lưới đã bỏ (ChecksheetTable). */}
                   <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-8">
-                    <InfoField label="Nhóm nhỏ" value={selectedThietBi.nhom} />
-                    <InfoField label="Cụm" value={selectedThietBi.cum} />
-                    <InfoField label="Phòng/Xưởng" value={selectedThietBi.xuong} />
-                    <InfoField label="Khu vực" value={selectedThietBi.khuVuc} />
-                    <InfoField label="Tên thiết bị" value={selectedThietBi.tenThietBi} />
-                    <InfoField label="Lãnh đạo xưởng" value={selectedThietBi.lanhDao} />
-                    <InfoField label="Trưởng ca" value={selectedThietBi.truongCa} />
+                    <InfoField icon="▦" label="Nhóm nhỏ" value={selectedThietBi.nhom} />
+                    <InfoField icon="⬚" label="Cụm" value={selectedThietBi.cum} />
+                    <InfoField icon="🏭" label="Phòng/Xưởng" value={selectedThietBi.xuong} />
+                    <InfoField icon="📍" label="Khu vực" value={selectedThietBi.khuVuc} />
                     <InfoField
+                      icon="⚙"
+                      label="Tên thiết bị"
+                      value={selectedThietBi.tenThietBi}
+                      accent
+                    />
+                    <InfoField icon="👤" label="Lãnh đạo xưởng" value={selectedThietBi.lanhDao} />
+                    <InfoField icon="👤" label="Trưởng ca" value={selectedThietBi.truongCa} />
+                    <InfoField
+                      icon="👤"
                       label="Người chịu trách nhiệm"
                       value={selectedThietBi.nguoiPhuTrachTen}
                     />
                   </dl>
                   <button
                     type="button"
-                    className="shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50"
+                    className="shrink-0 overflow-hidden rounded-md border border-[#dee2e6] bg-gray-50"
                     onClick={() => setImageModalOpen(true)}
                     title="Bấm để phóng to ảnh sơ đồ thiết bị"
                   >

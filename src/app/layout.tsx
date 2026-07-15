@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+// Font chữ thường (sans) dùng system stack khai báo thẳng trong globals.css cho
+// khớp giao diện GAS-Bootstrap cũ -- KHÔNG nạp Geist Sans nữa (sẽ là font tải
+// về nhưng không dùng). Geist Mono giữ lại: còn dùng cho mã chi tiết
+// (EquipmentDetail.tsx, class font-mono).
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -25,7 +24,7 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full min-w-0 flex-col">{children}</body>
     </html>

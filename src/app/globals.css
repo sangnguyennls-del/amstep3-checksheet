@@ -1,23 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  /* Apple parchment/ink (xem apple-DESIGN.md) -- nền off-white, chữ near-black
-     thay vì gray-900 mặc định, đồng bộ với accent #0066cc trong ui.ts. */
-  --background: #f5f5f7;
-  --foreground: #1d1d1f;
+  /* Token nền/chữ theo phong cách GAS-Bootstrap cũ (xem DESIGN.md) -- thay cho
+     hệ Apple trước đây (#f5f5f7 / #1d1d1f). */
+  --background: #f8f9fa; /* body-tertiary */
+  --foreground: #212529; /* body color */
+
+  /* Accent + viền dùng chung cho ui.ts và các bảng. Khai báo tập trung ở đây để
+     đổi 1 chỗ là đổi toàn app. */
+  --bs-primary: #0d6efd;
+  --bs-border: #dee2e6;
+  --bs-border-input: #ced4da;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  /* System stack đúng như Bootstrap 5 (bản GAS cũ dùng) -- KHÔNG dùng Geist nữa
+     để chữ khớp giao diện cũ. */
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
   font-feature-settings: "tnum" 1;
 }
 

@@ -147,7 +147,7 @@ export function EditCongViecModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-md border bg-white p-4 shadow-lg">
+      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-md border border-[#dee2e6] bg-white p-4 shadow-lg">
         <h2 className="mb-1 text-base font-semibold text-gray-800">
           {mode === "remove" ? "Loại bỏ công việc" : "Sửa thời gian / tần suất"}
         </h2>
@@ -163,7 +163,7 @@ export function EditCongViecModal({
                 <input
                   type="number"
                   step="any"
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
                   value={thoiGian}
                   onChange={(e) => setThoiGian(e.target.value)}
                 />
@@ -173,7 +173,7 @@ export function EditCongViecModal({
                   <label className="text-sm font-medium text-gray-700">Tần suất (đơn vị)</label>
                   <input
                     type="text"
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
                     value={tanSuatChu}
                     onChange={(e) => setTanSuatChu(e.target.value)}
                     placeholder="Ngày / Tuần / Tháng / Quý"
@@ -184,7 +184,7 @@ export function EditCongViecModal({
                   <input
                     type="number"
                     step="any"
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
                     value={tanSuatSo}
                     onChange={(e) => setTanSuatSo(e.target.value)}
                   />
@@ -207,7 +207,7 @@ export function EditCongViecModal({
               Lý do <span className="text-red-600">*</span>
             </label>
             <textarea
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
               rows={3}
               value={lyDo}
               onChange={(e) => setLyDo(e.target.value)}
@@ -237,7 +237,7 @@ export function EditCongViecModal({
               className={
                 mode === "remove"
                   ? "rounded-full bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                  : "rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-50"
+                  : "rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-50"
               }
               disabled={submitting || !!lyDoError}
             >

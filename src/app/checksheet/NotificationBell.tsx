@@ -63,7 +63,7 @@ export function NotificationBell({ msnv }: { msnv: string | null }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-md border bg-white p-3 text-left shadow-lg">
+        <div className="absolute right-0 z-10 mt-2 w-80 rounded-md border border-[#dee2e6] bg-white p-3 text-left shadow-lg">
           {groups.length === 0 ? (
             <p className="text-sm text-gray-500">Không có thông báo</p>
           ) : (

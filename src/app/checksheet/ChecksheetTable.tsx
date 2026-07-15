@@ -85,7 +85,7 @@ function TanSuatCells({ row }: { row: CongViecRow }) {
         return (
           <td
             key={label}
-            className="border border-gray-200 px-1 py-1 text-center tabular-nums"
+            className="border border-[#dee2e6] px-1 py-1 text-center tabular-nums"
             title={showHere && matched === null ? `Đơn vị gốc: "${row.tanSuatChu}"` : undefined}
           >
             {showHere ? row.tanSuatSo : ""}
@@ -104,7 +104,9 @@ const COL_WIDTHS = {
   thoiGian: 64,
   auto: 56,
   thaoTac: 96,
-  tanSuat: 44,
+  // 52 (không phải 44): nhãn "THÁNG" ở thead CHỮ HOA đậm cần 48px, cột 44px cũ
+  // làm chữ tràn sang cột "QUÝ" bên cạnh (đo thật sau khi đổi phong cách).
+  tanSuat: 52,
   ngay: 32,
 } as const;
 
@@ -235,14 +237,14 @@ export function ChecksheetTable({
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-md border bg-white p-4 text-center text-sm text-gray-400">
+      <p className="rounded-md border border-[#dee2e6] bg-white p-4 text-center text-sm text-[#6c757d]">
         Không có hạng mục nào cho thiết bị/tháng đã chọn.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border bg-white">
+    <div className="overflow-x-auto rounded-md border border-[#dee2e6] bg-white">
       <table className="border-collapse text-xs" style={{ tableLayout: "fixed", width: "100%" }}>
         <colgroup>
           <col style={{ width: colWidths.so }} />
@@ -259,26 +261,26 @@ export function ChecksheetTable({
             <col key={d} style={{ width: colWidths.ngay }} />
           ))}
         </colgroup>
-        <thead className="border-b bg-gray-50 text-left text-gray-600">
+        <thead className="border-b bg-[#f8f9fa] text-left text-xs font-bold tracking-wide text-[#212529] uppercase">
           <tr>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+            <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Số
             </th>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+            <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Tên chi tiết
             </th>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+            <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Điều kiện cơ bản
             </th>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+            <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Tiêu chuẩn
             </th>
-            <th className="border border-gray-200 px-2 py-1" rowSpan={2}>
+            <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Thời gian
             </th>
             {printMode ? null : (
               <th
-                className="border border-gray-200 px-1 py-1 text-center"
+                className="border border-[#dee2e6] px-1 py-1 text-center"
                 rowSpan={2}
                 title="Tự động tô Plan mỗi 4/8 ngày"
               >
@@ -286,25 +288,25 @@ export function ChecksheetTable({
               </th>
             )}
             {printMode ? null : (
-              <th className="no-print border border-gray-200 px-1 py-1 text-center" rowSpan={2}>
+              <th className="no-print border border-[#dee2e6] px-1 py-1 text-center" rowSpan={2}>
                 Thao tác
               </th>
             )}
-            <th className="border border-gray-200 px-1 py-1 text-center" colSpan={TAN_SUAT_COLUMNS.length}>
+            <th className="border border-[#dee2e6] px-1 py-1 text-center" colSpan={TAN_SUAT_COLUMNS.length}>
               Tần suất
             </th>
-            <th className="border border-gray-200 px-1 py-1 text-center" colSpan={days.length}>
+            <th className="border border-[#dee2e6] px-1 py-1 text-center" colSpan={days.length}>
               Tháng {thangNam} / Năm {namNam}
             </th>
           </tr>
           <tr>
             {TAN_SUAT_COLUMNS.map((label) => (
-              <th key={label} className="border border-gray-200 px-1 py-1 text-center">
+              <th key={label} className="border border-[#dee2e6] px-1 py-1 text-center">
                 {label}
               </th>
             ))}
             {days.map((d) => (
-              <th key={d} className="border border-gray-200 px-1 py-1 text-center">
+              <th key={d} className="border border-[#dee2e6] px-1 py-1 text-center">
                 {Number(d.slice(8, 10))}
               </th>
             ))}
@@ -323,33 +325,33 @@ export function ChecksheetTable({
               <tr key={row.congViecId} className="border-b last:border-0">
                 {isGroupStart ? (
                   <>
-                    <td className="border border-gray-200 px-2 py-1 text-center align-top" rowSpan={span}>
+                    <td className="border border-[#dee2e6] px-2 py-1 text-center align-top" rowSpan={span}>
                       {row.stt ?? ""}
                     </td>
-                    <td className="border border-gray-200 px-2 py-1 align-top" rowSpan={span}>
+                    <td className="border border-[#dee2e6] px-2 py-1 align-top" rowSpan={span}>
                       {row.tenChiTiet}
                     </td>
-                    <td className="border border-gray-200 px-2 py-1 align-top" rowSpan={span}>
+                    <td className="border border-[#dee2e6] px-2 py-1 align-top" rowSpan={span}>
                       {row.dieuKienCoBan ?? ""}
                     </td>
                   </>
                 ) : null}
-                <td className="border border-gray-200 px-2 py-1">{row.loaiHoatDong}</td>
+                <td className="border border-[#dee2e6] px-2 py-1">{row.loaiHoatDong}</td>
                 {/* Mục 10: cột "Người chịu trách nhiệm" đã dời lên khối thông
                     tin đầu trang (cạnh Khu vực/Trưởng ca) -- không còn trong
                     bảng lưới. */}
-                <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
+                <td className="border border-[#dee2e6] px-2 py-1 text-center tabular-nums">
                   {row.thoiGian ?? ""}
                 </td>
                 {printMode ? null : (
-                  <td className="border border-gray-200 px-1 py-1 text-center">
+                  <td className="border border-[#dee2e6] px-1 py-1 text-center">
                     {/* P4/P8: tô Plan mỗi 4/8 ngày bắt đầu từ "ngày vừa bấm" trong
                         chính hàng này (selectedDay) -- bấm 1 ô ngày trước, rồi bấm
                         P4/P8. Disable nếu chưa chọn ngày nào trong hàng. */}
                     <div className="flex justify-center gap-1">
                       <button
                         type="button"
-                        className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                        className="rounded border border-[#6c757d] px-1 text-[10px] leading-4 text-[#6c757d] hover:bg-[#6c757d] hover:text-white disabled:opacity-40"
                         disabled={selectedDay?.congViecId !== row.congViecId}
                         title="Tô Plan mỗi 4 ngày từ ngày đã chọn"
                         onClick={() =>
@@ -361,7 +363,7 @@ export function ChecksheetTable({
                       </button>
                       <button
                         type="button"
-                        className="rounded border px-1 text-[10px] leading-4 hover:bg-gray-100 disabled:opacity-40"
+                        className="rounded border border-[#6c757d] px-1 text-[10px] leading-4 text-[#6c757d] hover:bg-[#6c757d] hover:text-white disabled:opacity-40"
                         disabled={selectedDay?.congViecId !== row.congViecId}
                         title="Tô Plan mỗi 8 ngày từ ngày đã chọn"
                         onClick={() =>
@@ -375,10 +377,10 @@ export function ChecksheetTable({
                   </td>
                 )}
                 {printMode ? null : (
-                <td className="no-print border border-gray-200 px-1 py-1 text-center">
+                <td className="no-print border border-[#dee2e6] px-1 py-1 text-center">
                   {isEndingThisMonth ? (
                     <span
-                      className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                      className="rounded-full bg-[#e9ecef] px-1.5 py-0.5 text-[10px] font-medium text-[#6c757d]"
                       title={
                         row.thayTheBoi
                           ? "Đã duyệt sửa -- giá trị mới áp dụng từ tháng sau, tháng này giữ giá trị cũ"
@@ -389,7 +391,7 @@ export function ChecksheetTable({
                     </span>
                   ) : pendingCongViecIds.has(row.congViecId) ? (
                     <span
-                      className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                      className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"
                       title="Đề xuất đang chờ Admin duyệt"
                     >
                       Chờ duyệt
@@ -398,7 +400,7 @@ export function ChecksheetTable({
                     <div className="flex justify-center gap-1">
                       <button
                         type="button"
-                        className="rounded border px-1.5 text-[10px] leading-4 hover:bg-gray-100"
+                        className="rounded border border-[#0d6efd] px-1.5 text-[10px] leading-4 text-[#0d6efd] hover:bg-[#0d6efd] hover:text-white"
                         title="Sửa thời gian/tần suất"
                         onClick={() => onEditCongViec(row)}
                       >
@@ -406,7 +408,7 @@ export function ChecksheetTable({
                       </button>
                       <button
                         type="button"
-                        className="rounded border border-red-300 px-1.5 text-[10px] leading-4 text-red-600 hover:bg-red-50"
+                        className="rounded border border-[#dc3545] px-1.5 text-[10px] leading-4 text-[#dc3545] hover:bg-[#dc3545] hover:text-white"
                         title="Loại bỏ công việc này (giữ lịch sử)"
                         onClick={() => onRemoveCongViec(row)}
                       >
@@ -421,7 +423,7 @@ export function ChecksheetTable({
                   const cell = thucHien[cellKey(row.congViecId, d)];
                   const rowEditable = editability[row.congViecId] ?? DENY_EDITABLE;
                   return (
-                    <td key={d} className="border border-gray-200 p-0">
+                    <td key={d} className="border border-[#dee2e6] p-0">
                       <Cell
                         congViecId={row.congViecId}
                         ngay={d}
@@ -443,26 +445,26 @@ export function ChecksheetTable({
             );
           })}
         </tbody>
-        <tfoot className="bg-amber-100 font-medium text-gray-900">
+        <tfoot className="bg-[#fff3cd] font-bold text-[#212529]">
           <tr>
             {/* 4 cột trái (Số, Tên chi tiết, Điều kiện cơ bản, Tiêu chuẩn) gộp
                 làm nhãn; cột "Thời gian" hiện tổng 1 vòng đầy đủ. */}
-            <th colSpan={4} className="border border-gray-200 px-2 py-1 text-right">
+            <th colSpan={4} className="border border-[#dee2e6] px-2 py-1 text-right">
               TỔNG THỜI GIAN CHĂM SÓC (PHÚT)
             </th>
-            <td className="border border-gray-200 px-2 py-1 text-center tabular-nums">
+            <td className="border border-[#dee2e6] px-2 py-1 text-center tabular-nums">
               {tongThoiGianBang || ""}
             </td>
             {/* Auto + Thao tác chỉ tồn tại ở bản MÀN HÌNH (printMode bỏ 2 cột
                 này) -- phải theo cùng điều kiện với thead/tbody, nếu hardcode
                 colSpan thì bản in sẽ lệch cột. */}
-            {printMode ? null : <td className="border border-gray-200" />}
-            {printMode ? null : <td className="no-print border border-gray-200" />}
-            <td colSpan={TAN_SUAT_COLUMNS.length} className="border border-gray-200" />
+            {printMode ? null : <td className="border border-[#dee2e6]" />}
+            {printMode ? null : <td className="no-print border border-[#dee2e6]" />}
+            <td colSpan={TAN_SUAT_COLUMNS.length} className="border border-[#dee2e6]" />
             {tongTheoNgay.map((tong, idx) => (
               <td
                 key={days[idx]}
-                className="border border-gray-200 px-1 py-1 text-center tabular-nums"
+                className="border border-[#dee2e6] px-1 py-1 text-center tabular-nums"
               >
                 {tong || ""}
               </td>

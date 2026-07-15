@@ -48,12 +48,12 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
         />
       </div>
 
-      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
+      <label className="flex items-start gap-2.5 rounded-md border border-[#dee2e6] p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableLockDate"
           defaultChecked={enableLockDate}
-          className="mt-1 h-4 w-4 accent-[#0066cc]"
+          className="mt-1 h-4 w-4 accent-[#0d6efd]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">Bật khoá theo ngày</span>
@@ -63,12 +63,12 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
         </span>
       </label>
 
-      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
+      <label className="flex items-start gap-2.5 rounded-md border border-[#dee2e6] p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableTimeLimit"
           defaultChecked={enableTimeLimit}
-          className="mt-1 h-4 w-4 accent-[#0066cc]"
+          className="mt-1 h-4 w-4 accent-[#0d6efd]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">
@@ -80,12 +80,12 @@ export function SettingsForm({ current }: { current: CaiDatRow[] }) {
         </span>
       </label>
 
-      <label className="flex items-start gap-2.5 rounded-md border border-gray-200 p-3 transition-colors hover:bg-gray-50">
+      <label className="flex items-start gap-2.5 rounded-md border border-[#dee2e6] p-3 transition-colors hover:bg-gray-50">
         <input
           type="checkbox"
           name="enableDeviceLock"
           defaultChecked={enableDeviceLock}
-          className="mt-1 h-4 w-4 accent-[#0066cc]"
+          className="mt-1 h-4 w-4 accent-[#0d6efd]"
         />
         <span>
           <span className="block text-sm font-medium text-gray-800">

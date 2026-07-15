@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           chỉ ẩn phần tử có class `no-print` (mô hình opt-out, không phải
           "ẩn tất cả trừ .print-area") -- layout admin (nav) là 1 trong các
           phần khung cần ẩn để bản in chỉ còn đúng checksheet thiết bị. */}
-      <nav className="no-print sticky top-0 z-10 flex items-center gap-5 border-b border-gray-200 bg-white/90 px-6 py-3 backdrop-blur-sm">
+      <nav className="no-print sticky top-0 z-10 flex items-center gap-5 border-b border-[#dee2e6] bg-white/90 px-6 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <AppLogo heightPx={28} />
           <span className="text-sm font-semibold text-gray-900">Quản trị</span>

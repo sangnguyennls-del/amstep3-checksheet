@@ -133,12 +133,12 @@ export function SearchableSelect({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-60 w-full min-w-40 overflow-y-auto rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg"
+          className="absolute z-30 mt-1 max-h-60 w-full min-w-40 overflow-y-auto rounded-md border border-[#dee2e6] bg-white py-1 text-sm shadow-lg"
         >
           <li>
             <button
               type="button"
-              className={`block w-full px-3 py-2 text-left hover:bg-gray-50 ${value === "" ? "font-medium text-[#0066cc]" : "text-gray-500"}`}
+              className={`block w-full px-3 py-2 text-left hover:bg-gray-50 ${value === "" ? "font-medium text-[#0d6efd]" : "text-gray-500"}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 select("");
@@ -152,8 +152,8 @@ export function SearchableSelect({
               <button
                 type="button"
                 className={`block w-full px-3 py-2 text-left ${
-                  idx === highlight ? "bg-[#0066cc]/10" : ""
-                } ${o.value === value ? "font-medium text-[#0066cc]" : "text-gray-800"} hover:bg-gray-50`}
+                  idx === highlight ? "bg-[#0d6efd]/10" : ""
+                } ${o.value === value ? "font-medium text-[#0d6efd]" : "text-gray-800"} hover:bg-gray-50`}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   select(o.value);

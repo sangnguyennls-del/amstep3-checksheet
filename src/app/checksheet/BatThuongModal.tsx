@@ -114,7 +114,7 @@ export function BatThuongModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-md border bg-white p-4 shadow-lg">
+      <div className="w-full max-w-md rounded-md border border-[#dee2e6] bg-white p-4 shadow-lg">
         <h2 className="mb-1 text-base font-semibold text-gray-800">Ghi nhận bất thường</h2>
         <p className="mb-3 text-sm text-gray-500">
           Ngày {Number(ngay.slice(8, 10))}/{Number(ngay.slice(5, 7))} -- {congViecId}
@@ -126,7 +126,7 @@ export function BatThuongModal({
               Mô tả bất thường <span className="text-red-600">*</span>
             </label>
             <textarea
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
               rows={3}
               value={moTa}
               onChange={(e) => setMoTa(e.target.value)}
@@ -142,7 +142,7 @@ export function BatThuongModal({
             <label className="text-sm font-medium text-gray-700">Ảnh (link Google Drive, tuỳ chọn)</label>
             <input
               type="text"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
               value={anhUrl}
               onChange={(e) => setAnhUrl(e.target.value)}
               placeholder="https://drive.google.com/..."
@@ -153,7 +153,7 @@ export function BatThuongModal({
             <label className="text-sm font-medium text-gray-700">Ngày phát hiện</label>
             <input
               type="date"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
               value={ngayPhatHien}
               onChange={(e) => setNgayPhatHien(e.target.value)}
             />

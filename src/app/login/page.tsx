@@ -14,8 +14,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-[#0066cc]/5 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm shadow-[#0066cc]/5">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-[#0d6efd]/5 px-4">
+      <div className="w-full max-w-sm rounded-xl border border-[#dee2e6] bg-white p-8 shadow-sm shadow-[#0d6efd]/5">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <AppLogo heightPx={44} />
           <h1 className="text-lg font-semibold tracking-tight text-gray-900">

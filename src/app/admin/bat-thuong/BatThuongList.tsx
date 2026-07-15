@@ -126,7 +126,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
         {TRANG_THAI_LIST.map((trangThai) => (
           <label
             key={trangThai}
-            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm transition-colors hover:bg-gray-50 has-[:checked]:border-[#0066cc]/40 has-[:checked]:bg-[#0066cc]/5"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-[#ced4da] bg-white px-2.5 py-1.5 text-sm transition-colors hover:bg-gray-50 has-[:checked]:border-[#0d6efd]/40 has-[:checked]:bg-[#0d6efd]/5"
           >
             <input
               type="checkbox"
@@ -143,7 +143,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
 
       <div className={`overflow-x-auto ${ui.card} p-0!`}>
         <table className="min-w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
+          <thead className="border-b border-[#dee2e6] bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
             <tr>
               <th className="px-3 py-2.5">Ngày</th>
               <th className="px-3 py-2.5">Thiết bị</th>
@@ -184,7 +184,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
                       href={item.anhUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#0066cc] transition-colors hover:text-[#0055ab] hover:underline"
+                      className="text-[#0d6efd] transition-colors hover:text-[#0b5ed7] hover:underline"
                     >
                       Xem ảnh
                     </a>

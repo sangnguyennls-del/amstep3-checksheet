@@ -161,7 +161,7 @@ function CreateCongViecForm({ chiTietId, thietBiId }: { chiTietId: string; thiet
       {open ? (
         <form
           action={formAction}
-          className="mt-2 grid grid-cols-1 gap-2 rounded-md border bg-gray-50 p-3 sm:grid-cols-2 md:grid-cols-4"
+          className="mt-2 grid grid-cols-1 gap-2 rounded-md border border-[#dee2e6] bg-[#f8f9fa] p-3 sm:grid-cols-2 md:grid-cols-4"
         >
           <input type="hidden" name="chiTietId" value={chiTietId} />
           <input type="hidden" name="thietBiId" value={thietBiId} />
@@ -195,7 +195,7 @@ function CreateCongViecForm({ chiTietId, thietBiId }: { chiTietId: string; thiet
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-full bg-[#0066cc] px-2 py-1 text-xs font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
+              className="rounded-md bg-[#0d6efd] px-2 py-1 text-xs font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-60"
             >
               {isPending ? "Đang thêm..." : "Thêm"}
             </button>
@@ -219,7 +219,7 @@ function EditCongViecDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-lg rounded-md border bg-white p-4 shadow-lg">
+      <div className="w-full max-w-lg rounded-md border border-[#dee2e6] bg-white p-4 shadow-lg">
         <h2 className="mb-3 text-base font-semibold">Sửa công việc {congViec.id}</h2>
         <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <input type="hidden" name="id" value={congViec.id} />
@@ -323,7 +323,7 @@ function EditCongViecDialog({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
+              className="rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-60"
             >
               {isPending ? "Đang lưu..." : "Lưu"}
             </button>
@@ -441,7 +441,7 @@ function CreateChiTietForm({ thietBiId }: { thietBiId: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab]"
+        className="rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7]"
       >
         {open ? "Đóng" : "+ Thêm chi tiết"}
       </button>
@@ -449,7 +449,7 @@ function CreateChiTietForm({ thietBiId }: { thietBiId: string }) {
       {open ? (
         <form
           action={formAction}
-          className="mt-3 grid grid-cols-1 gap-3 rounded-md border bg-white p-4 sm:grid-cols-2 md:grid-cols-3"
+          className="mt-3 grid grid-cols-1 gap-3 rounded-md border border-[#dee2e6] bg-white p-4 sm:grid-cols-2 md:grid-cols-3"
         >
           <input type="hidden" name="thietBiId" value={thietBiId} />
           <div className="flex flex-col gap-1">
@@ -478,7 +478,7 @@ function CreateChiTietForm({ thietBiId }: { thietBiId: string }) {
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
+              className="rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-60"
             >
               {isPending ? "Đang thêm..." : "Thêm chi tiết"}
             </button>
@@ -500,7 +500,7 @@ function EditChiTietDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-md rounded-md border bg-white p-4 shadow-lg">
+      <div className="w-full max-w-md rounded-md border border-[#dee2e6] bg-white p-4 shadow-lg">
         <h2 className="mb-3 text-base font-semibold">Sửa chi tiết {chiTiet.id}</h2>
         <form action={formAction} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={chiTiet.id} />
@@ -545,7 +545,7 @@ function EditChiTietDialog({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-full bg-[#0066cc] px-3 py-2 text-sm font-medium text-white hover:bg-[#0055ab] disabled:opacity-60"
+              className="rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-60"
             >
               {isPending ? "Đang lưu..." : "Lưu"}
             </button>
@@ -578,7 +578,7 @@ function ChiTietItem({ chiTiet }: { chiTiet: ChiTietWithCongViec }) {
   }
 
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border border-[#dee2e6] bg-white p-3">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -649,7 +649,7 @@ export function EquipmentDetail({
         </h1>
         <Link
           href="/admin/equipment"
-          className="text-sm text-[#0066cc] transition-colors hover:text-[#0055ab] hover:underline"
+          className="text-sm text-[#0d6efd] transition-colors hover:text-[#0b5ed7] hover:underline"
         >
           ← Danh sách thiết bị
         </Link>
