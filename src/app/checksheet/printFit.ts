@@ -2,18 +2,23 @@
 // ngang. Dùng chung cho nút "In" của /checksheet và in hàng loạt ở
 // /admin/stats (BatchPrint).
 
-// Bao vừa-1-trang tính theo WORST-CASE của cả 2 hướng giấy, KHÔNG chỉ A3 ngang.
-// Lý do: `@page { size: A3 landscape }` (print.css) chỉ được Chrome "Save as
-// PDF" tôn trọng; các đích in phổ biến khác -- nhất là "Microsoft Print to PDF"
-// (mặc định trên Windows) -- BỎ QUA lệnh landscape và in ra khổ A3 DỌC. Trên
-// trang dọc, page-box (297mm trừ lề) chỉ ~1047px bề ngang, nên nếu tính bao
-// theo bề ngang khổ ngang (~1398px) thì bảng ~1400px không được thu, tràn phải,
-// bị cắt ở ~cột 28 và rớt sang trang 2 (đúng lỗi người dùng gặp).
-//   - Bề RỘNG: lấy khổ DỌC-an toàn (297mm) -> vừa cả trang dọc lẫn ngang.
-//   - Bề CAO: lấy khổ NGANG-an toàn (297mm) -> khổ dọc cao hơn nên luôn dư.
-// Trừ hao ~30mm lề mỗi chiều cho lề mặc định của hộp thoại in. 96dpi: 1mm~3.7795px.
-export const PRINT_PAGE_WIDTH_PX = Math.floor((297 - 30) * (96 / 25.4)); // ~1009
-export const PRINT_PAGE_HEIGHT_PX = Math.floor((297 - 30) * (96 / 25.4)); // ~1009
+// Bao vừa-1-trang, TỐI ƯU CHO A3 NGANG (quyết định người dùng 2026-07-14).
+//
+// Lịch sử để đừng "sửa lại cho an toàn" mà không biết lý do: vòng 3 từng đặt bao
+// theo khổ DỌC-an toàn (~1009px) để phòng "Microsoft Print to PDF bỏ qua
+// `@page landscape` -> in ra khổ dọc". Nhưng thực tế mọi bản người dùng xuất đều
+// ra khổ NGANG, nên bao dọc phí mất ~1/3 bề ngang trang -> bảng in bị NHỎ (chỉ
+// dùng 63% bề ngang). Người dùng đã chốt: tối ưu khổ ngang, CHẤP NHẬN đánh đổi
+// -- nếu đích in nào ra khổ DỌC thì bảng sẽ tràn 2 trang trở lại.
+//
+// Ngân sách (đã kiểm chứng từ PDF thật: rendered_mm = cap_px / 3.7795, trình
+// duyệt KHÔNG tự co thêm):
+//   Bề ngang: A3 ngang 420mm - lề @page 20mm = 400mm page-box, trừ padding p-6
+//             của <main> (24px x 2 = 12.7mm) -> 387mm khả dụng.
+//   Bề cao:   297 - 20 - 12.7 = 264mm khả dụng.
+// Lấy 380mm x 257mm (chừa ~7mm an toàn mỗi chiều). 96dpi: 1mm ~ 3.7795px.
+export const PRINT_PAGE_WIDTH_PX = Math.floor((420 - 40) * (96 / 25.4)); // ~1436 (380mm)
+export const PRINT_PAGE_HEIGHT_PX = Math.floor((297 - 40) * (96 / 25.4)); // ~971 (257mm)
 
 /** "KT06101" + "2026-07" -> "072026-KT06101" (tên file PDF mặc định, MMyyyy-mã). */
 export function buildPrintTitle(maThietBi: string, monthValue: string): string {
@@ -32,10 +37,10 @@ export function buildPrintTitle(maThietBi: string, monthValue: string): string {
  * Cũng bỏ đoạn "nới width" cũ (phản tác dụng khi chiều rộng mới là ràng buộc).
  * `zoom` (không phải transform) để layout co thật, không bị ngắt trang.
  *
- * Sửa lỗi (vòng 3): bao RỘNG/CAO (PRINT_PAGE_*_PX) nay tính theo khổ DỌC-an
- * toàn, vì đích "Microsoft Print to PDF" bỏ qua `@page landscape` -> in ra A3
- * dọc; bao ngang cũ (~1398px) không thu đủ nên bảng ~1400px tràn cột 28-31 sang
- * trang 2. Thu về ~1009px thì vừa cả trang dọc lẫn ngang -> luôn 1 trang.
+ * Vòng 4: bao RỘNG/CAO (PRINT_PAGE_*_PX) tính theo khổ A3 NGANG -- xem lý do +
+ * ngân sách mm ở comment của 2 hằng số đó. Thiết bị ÍT dòng bị bề RỘNG chặn
+ * (lấp gần hết bề ngang, chừa trắng dưới -- đúng ý người dùng, không giãn dòng);
+ * thiết bị NHIỀU dòng bị bề CAO chặn (lấp gần hết chiều dọc).
  */
 export function fitPrintSheetToPage(): void {
   const sheets = document.querySelectorAll<HTMLElement>(".print-sheet");
