@@ -21,6 +21,7 @@ const TRANG_THAI_BADGE: Record<(typeof TRANG_THAI_LIST)[number], string> = {
 const LOAI_DE_XUAT_LABEL: Record<DeXuatCongViecItem["loaiDeXuat"], string> = {
   sua: "Sửa thời gian/tần suất",
   loai_bo: "Loại bỏ",
+  them: "Thêm hạng mục",
 };
 
 // Mặc định chỉ hiện "Chờ duyệt" -- đây là hàng đợi cần xử lý, đúng tinh thần
@@ -33,6 +34,24 @@ function formatDateTime(iso: string): string {
 }
 
 function ChangeSummary({ item }: { item: DeXuatCongViecItem }) {
+  if (item.loaiDeXuat === "them") {
+    const tsGoc = [item.tanSuatChuMoi, item.tanSuatSoMoi].filter((x) => x != null && x !== "").join(" ");
+    const congViec = `${item.loaiHoatDongMoi ?? "—"}${item.thoiGianMoi != null ? ` · ${item.thoiGianMoi} phút` : ""}${tsGoc ? ` · ${tsGoc}` : ""}`;
+    return (
+      <div className="flex flex-col gap-0.5 text-xs">
+        {item.chiTietChonTen ? (
+          <span>+ Công việc vào chi tiết «{item.chiTietChonTen}»</span>
+        ) : (
+          <span>
+            + Chi tiết mới: <strong>{item.tenChiTietMoi}</strong>
+            {item.sttMoi != null ? ` (STT ${item.sttMoi})` : ""}
+            {item.dieuKienCoBanMoi ? ` — ĐK: ${item.dieuKienCoBanMoi}` : ""}
+          </span>
+        )}
+        <span>{congViec}</span>
+      </div>
+    );
+  }
   if (item.loaiDeXuat === "loai_bo") {
     return <span className="text-gray-600">Loại bỏ khỏi checksheet (giữ lịch sử)</span>;
   }
@@ -193,9 +212,11 @@ export function DeXuatCongViecList({ initialItems }: { initialItems: DeXuatCongV
                   {item.maThietBi} — {item.tenThietBi}
                 </td>
                 <td className="px-3 py-2.5">
-                  {item.tenChiTiet}
+                  {item.loaiDeXuat === "them" ? (item.chiTietChonTen ?? item.tenChiTietMoi ?? "—") : item.tenChiTiet}
                   <br />
-                  <span className="text-xs text-gray-500">{item.loaiHoatDong}</span>
+                  <span className="text-xs text-gray-500">
+                    {item.loaiDeXuat === "them" ? (item.loaiHoatDongMoi ?? "") : item.loaiHoatDong}
+                  </span>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">{LOAI_DE_XUAT_LABEL[item.loaiDeXuat]}</td>
                 <td className="px-3 py-2.5">

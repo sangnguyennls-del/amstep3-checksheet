@@ -39,6 +39,7 @@ yarn-error.log*
 # supabase local
 supabase/.temp
 supabase/.branches
+supabase/seed.sql
 
 # claude worktrees / subagent-driven-development scratch
 .claude/worktrees/

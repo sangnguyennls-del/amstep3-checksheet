@@ -11,8 +11,8 @@ function firstOrNull<T>(v: T | T[] | null | undefined): T | null {
 
 export type DeXuatCongViecItem = {
   id: string;
-  congViecId: string;
-  loaiDeXuat: "sua" | "loai_bo";
+  congViecId: string | null; // null với loaiDeXuat === "them"
+  loaiDeXuat: "sua" | "loai_bo" | "them";
   thoiGianMoi: number | null;
   tanSuatChuMoi: string | null;
   tanSuatSoMoi: number | null;
@@ -31,6 +31,12 @@ export type DeXuatCongViecItem = {
   tenChiTiet: string;
   maThietBi: string;
   tenThietBi: string;
+  // Chỉ có với loaiDeXuat === "them":
+  tenChiTietMoi: string | null;
+  dieuKienCoBanMoi: string | null;
+  sttMoi: number | null;
+  loaiHoatDongMoi: string | null;
+  chiTietChonTen: string | null; // tên chi tiết có sẵn (kiểu a); null nếu chi tiết mới
 };
 
 type ThietBiJoin = { ma_thiet_bi: string; ten_thiet_bi: string };
@@ -42,11 +48,14 @@ type CongViecJoin = {
   tan_suat_so: number | null;
   chitiet: ChiTietJoin | ChiTietJoin[] | null;
 };
+// Join trực tiếp qua thietbi_id/chitiet_id (đề xuất 'them') -- chỉ cần tên
+// chi tiết đã chọn (kiểu a) / thiết bị mục tiêu, khác join lồng qua congviec.
+type ChiTietDirectJoin = { ten_chi_tiet: string };
 
 type DeXuatJoinRow = {
   id: string;
-  congviec_id: string;
-  loai_de_xuat: "sua" | "loai_bo";
+  congviec_id: string | null;
+  loai_de_xuat: "sua" | "loai_bo" | "them";
   thoi_gian_moi: number | null;
   tan_suat_chu_moi: string | null;
   tan_suat_so_moi: number | null;
@@ -57,6 +66,15 @@ type DeXuatJoinRow = {
   ly_do_tu_choi: string | null;
   created_at: string;
   congviec: CongViecJoin | CongViecJoin[] | null;
+  // Chỉ có với loai_de_xuat === 'them':
+  thietbi_id: string | null;
+  chitiet_id: string | null;
+  ten_chi_tiet_moi: string | null;
+  dieu_kien_co_ban_moi: string | null;
+  stt_moi: number | null;
+  loai_hoat_dong_moi: string | null;
+  thietbi: ThietBiJoin | ThietBiJoin[] | null;
+  chitiet: ChiTietDirectJoin | ChiTietDirectJoin[] | null;
 };
 
 export async function getDeXuatCongViecList(
@@ -68,7 +86,10 @@ export async function getDeXuatCongViecList(
     .select(
       `id, congviec_id, loai_de_xuat, thoi_gian_moi, tan_suat_chu_moi, tan_suat_so_moi, ly_do,
        trang_thai, nguoi_de_xuat, nguoi_duyet, ly_do_tu_choi, created_at,
-       congviec!inner ( loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so,
+       thietbi_id, chitiet_id, ten_chi_tiet_moi, dieu_kien_co_ban_moi, stt_moi, loai_hoat_dong_moi,
+       thietbi ( ma_thiet_bi, ten_thiet_bi ),
+       chitiet ( ten_chi_tiet ),
+       congviec ( loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so,
          chitiet!inner ( ten_chi_tiet, thietbi!inner ( ma_thiet_bi, ten_thiet_bi ) ) )`,
     )
     .order("created_at", { ascending: false });
@@ -86,6 +107,10 @@ export async function getDeXuatCongViecList(
     const congViec = firstOrNull(r.congviec);
     const chiTiet = firstOrNull(congViec?.chitiet ?? null);
     const thietBi = firstOrNull(chiTiet?.thietbi ?? null);
+    // Join trực tiếp qua thietbi_id/chitiet_id -- chỉ có giá trị với 'them'
+    // (congviec_id null => join lồng ở trên rỗng, phải fallback về đây).
+    const thietBiTrucTiep = firstOrNull(r.thietbi);
+    const chiTietTrucTiep = firstOrNull(r.chitiet);
 
     return {
       id: r.id,
@@ -105,8 +130,13 @@ export async function getDeXuatCongViecList(
       tanSuatSoHienTai: congViec?.tan_suat_so ?? null,
       loaiHoatDong: congViec?.loai_hoat_dong ?? "",
       tenChiTiet: chiTiet?.ten_chi_tiet ?? "",
-      maThietBi: thietBi?.ma_thiet_bi ?? "",
-      tenThietBi: thietBi?.ten_thiet_bi ?? "",
+      maThietBi: thietBi?.ma_thiet_bi ?? thietBiTrucTiep?.ma_thiet_bi ?? "",
+      tenThietBi: thietBi?.ten_thiet_bi ?? thietBiTrucTiep?.ten_thiet_bi ?? "",
+      tenChiTietMoi: r.ten_chi_tiet_moi ?? null,
+      dieuKienCoBanMoi: r.dieu_kien_co_ban_moi ?? null,
+      sttMoi: r.stt_moi ?? null,
+      loaiHoatDongMoi: r.loai_hoat_dong_moi ?? null,
+      chiTietChonTen: chiTietTrucTiep?.ten_chi_tiet ?? null,
     };
   });
 }
