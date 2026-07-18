@@ -88,6 +88,16 @@ function CreateThietBiForm({ users }: { users: NguoiDungOption[] }) {
               options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
             />
           </div>
+          {/* Link ảnh sơ đồ -- checksheet/bản in đọc cột này. Ở đây chỉ nhập;
+              muốn xem trước ảnh thì mở trang chi tiết thiết bị. */}
+          <div className="flex flex-col gap-1">
+            <label className={ui.label}>Link ảnh sơ đồ (Google Drive)</label>
+            <input
+              name="anhUrl"
+              placeholder="https://drive.google.com/file/d/.../view"
+              className={ui.input}
+            />
+          </div>
 
           {state.error ? (
             <p role="alert" className={`col-span-full ${ui.errorText}`}>

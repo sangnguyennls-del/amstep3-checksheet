@@ -121,7 +121,10 @@ const PRINT_COL_WIDTHS = {
   thoiGian: 36,
   auto: 0,
   thaoTac: 0,
-  tanSuat: 26,
+  // 40 (không phải 26): nhãn thead CHỮ HOA đậm ở cỡ chữ bản in (9px) cần tới
+  // 37px cho "THÁNG" (đo thật) -- 26px làm NGÀY/TUẦN/THÁNG/QUÝ tràn và ĐÈ LÊN
+  // NHAU trên PDF. Xem thêm comment ở thead về việc không đặt text-xs.
+  tanSuat: 40,
   ngay: 24,
 } as const;
 
@@ -261,7 +264,12 @@ export function ChecksheetTable({
             <col key={d} style={{ width: colWidths.ngay }} />
           ))}
         </colgroup>
-        <thead className="border-b bg-[#f8f9fa] text-left text-xs font-bold tracking-wide text-[#212529] uppercase">
+        {/* KHÔNG đặt cỡ chữ (text-xs) ở đây: luật gắn thẳng lên thead sẽ ĐÈ
+            `.print-sheet table { font-size: 9px }` của print.css, làm header bản
+            in ra 12px -> nhãn TẦN SUẤT (NGÀY/TUẦN/THÁNG/QUÝ) phình quá khổ cột
+            và ĐÈ LÊN NHAU trên PDF. Để trống thì: màn hình kế thừa text-xs của
+            <table> bên dưới (12px), bản in kế thừa 9px từ print.css -- đúng cả 2. */}
+        <thead className="border-b bg-[#f8f9fa] text-left font-bold tracking-wide text-[#212529] uppercase">
           <tr>
             <th className="border border-[#dee2e6] px-2 py-1" rowSpan={2}>
               Số

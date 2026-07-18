@@ -63,6 +63,7 @@ export async function createThietBi(
     lanh_dao: optionalText(formData, "lanhDao"),
     truong_ca: optionalText(formData, "truongCa"),
     nguoi_phu_trach: optionalText(formData, "nguoiPhuTrach"),
+    anh_url: optionalText(formData, "anhUrl"),
   });
 
   if (error) {
@@ -106,6 +107,7 @@ export async function updateThietBi(
       lanh_dao: optionalText(formData, "lanhDao"),
       truong_ca: optionalText(formData, "truongCa"),
       nguoi_phu_trach: optionalText(formData, "nguoiPhuTrach"),
+      anh_url: optionalText(formData, "anhUrl"),
     })
     .eq("id", id);
 

@@ -14,6 +14,9 @@ import {
 } from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
 import { SearchableSelect } from "@/components/SearchableSelect";
+// Dùng lại đúng hàm mà checksheet/bản in dùng để đổi link Drive -> URL ảnh hiện
+// được, nên xem trước ở đây phản ánh CHÍNH XÁC những gì sẽ hiện trên phiếu.
+import { toDriveImageSrc } from "@/app/checksheet/EquipmentImageModal";
 
 export type ThietBiDetail = {
   id: string;
@@ -27,6 +30,9 @@ export type ThietBiDetail = {
   lanh_dao: string | null;
   truong_ca: string | null;
   nguoi_phu_trach: string | null;
+  /** Link ảnh sơ đồ thiết bị (Google Drive) -- checksheet + bản in đọc cột này
+   * để hiện sơ đồ (xem PrintSheet.tsx / EquipmentImageModal.tsx). */
+  anh_url: string | null;
 };
 
 export type NguoiDungOption = { msnv: string; ho_ten: string };
@@ -72,6 +78,9 @@ function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiD
   // Mục 11: SearchableSelect là controlled component không có name -- giữ giá
   // trị ở state + <input type="hidden"> để form action (FormData) vẫn nhận.
   const [nguoiPhuTrach, setNguoiPhuTrach] = useState(thietBi.nguoi_phu_trach ?? "");
+  // Controlled để xem trước ảnh cập nhật ngay khi gõ/dán link.
+  const [anhUrl, setAnhUrl] = useState(thietBi.anh_url ?? "");
+  const [anhLoi, setAnhLoi] = useState(false);
 
   return (
     <form
@@ -122,6 +131,40 @@ function ThietBiForm({ thietBi, users }: { thietBi: ThietBiDetail; users: NguoiD
           placeholder="-- Chưa gán --"
           options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
         />
+      </div>
+
+      {/* Link ảnh sơ đồ: checksheet + bản in đọc cột này, nhưng trước đây KHÔNG
+          có chỗ nào nhập (chỉ sửa được tay dưới DB). Có xem trước vì link Drive
+          sai định dạng là lỗi thầm lặng -- người dùng chỉ thấy ảnh vỡ ở
+          checksheet mà không biết vì sao. */}
+      <div className="col-span-full flex flex-col gap-1">
+        <label className={ui.label}>Link ảnh sơ đồ (Google Drive)</label>
+        <input
+          name="anhUrl"
+          value={anhUrl}
+          onChange={(e) => setAnhUrl(e.target.value)}
+          placeholder="https://drive.google.com/file/d/.../view"
+          className={inputClass()}
+        />
+        {anhUrl.trim() ? (
+          <div className="mt-1 flex items-start gap-3">
+            <div className="flex h-28 w-40 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#dee2e6] bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element -- ảnh ngoài (Google Drive), chỉ để xem trước trong trang quản trị */}
+              <img
+                src={toDriveImageSrc(anhUrl)}
+                alt="Xem trước sơ đồ thiết bị"
+                className="max-h-full max-w-full object-contain"
+                onError={() => setAnhLoi(true)}
+                onLoad={() => setAnhLoi(false)}
+              />
+            </div>
+            <p className={`text-xs ${anhLoi ? "text-[#dc3545]" : "text-[#6c757d]"}`}>
+              {anhLoi
+                ? "Không tải được ảnh — kiểm tra lại link, và đảm bảo file trên Drive đã chia sẻ ở chế độ ai có link cũng xem được."
+                : "Xem trước — đây đúng là ảnh sẽ hiện trên checksheet và bản in."}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {state.error ? (

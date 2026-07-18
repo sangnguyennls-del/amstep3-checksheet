@@ -53,8 +53,14 @@ export function PrintSheet({
             />
           </div>
         ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <table className="border-collapse border border-gray-400 text-center text-[10px]">
+        {/* KHÔNG dùng flex-1: nó ép cột này = phần TRỐNG còn lại (~1216px),
+            trong khi bảng lưới bên dưới có bề rộng cột cố định tổng ~1350px nên
+            TRÀN ra ngoài cột -> bảng thông tin (w-full = 1216) ngắn hơn bảng lưới
+            (1350) một khúc bên phải (người dùng báo 2026-07-15). Bỏ flex-1 để cột
+            rộng bằng đúng nội dung rộng nhất (bảng lưới), rồi w-full của bảng
+            thông tin mới bám theo được. */}
+        <div className="flex flex-col gap-2">
+          <table className="w-full border-collapse border border-gray-400 text-center text-[10px]">
             <tbody>
               <tr>
                 <th rowSpan={2} className="border border-gray-400 px-2 py-1 align-top">
