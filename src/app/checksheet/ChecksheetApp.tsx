@@ -23,6 +23,8 @@ import { buildPrintTitle, fitPrintSheetToPage } from "./printFit";
 import { BatThuongModal } from "./BatThuongModal";
 import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
 import { EquipmentImageModal, toDriveImageSrc } from "./EquipmentImageModal";
+import { ThemHangMucModal } from "./ThemHangMucModal";
+import { chiTietOptions } from "@/lib/checksheet/chiTietOptions";
 import checksheetStyles from "./checksheet.module.css";
 import "./print.css";
 
@@ -203,6 +205,8 @@ export function ChecksheetApp({
   // hiện badge cho dòng đó (tránh đề xuất trùng), tải lại mỗi khi load
   // checksheet hoặc ngay sau khi 1 đề xuất mới được tạo.
   const [pendingCongViecIds, setPendingCongViecIds] = useState<Set<string>>(new Set());
+  // Task C: modal "Đề xuất thêm hạng mục" mở từ nút trên checksheet.
+  const [themOpen, setThemOpen] = useState(false);
 
   // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn --
   // đúng thuật toán hệ cũ (App.applyFilters trong Javascript.html): lọc mảng
@@ -915,6 +919,15 @@ export function ChecksheetApp({
                 paintMode={paintMode}
               />
               <LanCapNhatCuoi thucHien={gridState.cells} />
+              {canManageDevice ? (
+                <button
+                  type="button"
+                  onClick={() => setThemOpen(true)}
+                  className="no-print mt-2 rounded-md border border-[#0d6efd] px-3 py-2 text-sm font-medium text-[#0d6efd] hover:bg-[#0d6efd]/5"
+                >
+                  + Đề xuất thêm hạng mục
+                </button>
+              ) : null}
             </div>
           </div>
         </>
@@ -954,6 +967,13 @@ export function ChecksheetApp({
         target={editTarget?.target ?? null}
         onClose={() => setEditTarget(null)}
         onSuccess={handleEditCongViecSuccess}
+      />
+
+      <ThemHangMucModal
+        open={themOpen}
+        thietBiId={selectedThietBi?.id ?? null}
+        chiTietList={chiTietOptions(rows)}
+        onClose={() => setThemOpen(false)}
       />
     </div>
   );
