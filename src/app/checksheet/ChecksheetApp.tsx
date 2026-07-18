@@ -969,12 +969,14 @@ export function ChecksheetApp({
         onSuccess={handleEditCongViecSuccess}
       />
 
-      <ThemHangMucModal
-        open={themOpen}
-        thietBiId={selectedThietBi?.id ?? null}
-        chiTietList={chiTietOptions(rows)}
-        onClose={() => setThemOpen(false)}
-      />
+      {themOpen ? (
+        <ThemHangMucModal
+          open={themOpen}
+          thietBiId={selectedThietBi?.id ?? null}
+          chiTietList={chiTietOptions(rows)}
+          onClose={() => setThemOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
