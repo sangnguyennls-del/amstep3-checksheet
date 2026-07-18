@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { tanSuatOptions } from "@/lib/checksheet/tanSuat";
 
 // Modal ĐỀ XUẤT "Thêm hạng mục" trên /checksheet (Việc 2). Hai kiểu:
 // (a) thêm công việc vào chi tiết có sẵn; (b) thêm chi tiết mới + công việc đầu
@@ -224,13 +225,18 @@ export function ThemHangMucModal({
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-700">Tần suất</label>
-                  <input
-                    type="text"
+                  <select
                     className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
                     value={tanSuatChu}
                     onChange={(e) => setTanSuatChu(e.target.value)}
-                    placeholder="Ngày/Tuần/Tháng"
-                  />
+                  >
+                    <option value="">(không)</option>
+                    {tanSuatOptions(tanSuatChu).map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-700">Số</label>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { tanSuatOptions } from "@/lib/checksheet/tanSuat";
 
 export type EditCongViecTarget = {
   congViecId: string;
@@ -171,13 +172,18 @@ export function EditCongViecModal({
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-700">Tần suất (đơn vị)</label>
-                  <input
-                    type="text"
+                  <select
                     className="rounded-md border border-[#ced4da] px-3 py-2 text-sm"
                     value={tanSuatChu}
                     onChange={(e) => setTanSuatChu(e.target.value)}
-                    placeholder="Ngày / Tuần / Tháng / Quý"
-                  />
+                  >
+                    <option value="">(không)</option>
+                    {tanSuatOptions(target?.tanSuatChu).map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-gray-700">Tần suất (số)</label>
