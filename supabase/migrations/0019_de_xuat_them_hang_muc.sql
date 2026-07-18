@@ -91,7 +91,9 @@ begin
     return false;
   end if;
   select kip into v_kip_tb from thietbi where id = p_thietbi_id;
-  return v_kip_duyet is not null and v_kip_duyet = v_kip_tb;
+  -- coalesce -> false: nếu thietbi.kip NULL thì so sánh ra NULL, mà `if not NULL`
+  -- ở resolve_de_xuat_congviec sẽ bỏ qua raise (fail-open). Ép về false cho an toàn.
+  return coalesce(v_kip_duyet is not null and v_kip_duyet = v_kip_tb, false);
 end;
 $$;
 
@@ -163,7 +165,11 @@ begin
 end;
 $$;
 
-grant execute on function create_hang_muc_moi(uuid, text, text, text, int, text, numeric, text, numeric, text) to authenticated;
+-- create_hang_muc_moi là HÀM NỘI BỘ: chỉ được gọi từ propose_them_hang_muc /
+-- resolve_de_xuat_congviec (đều security definer, cùng chủ sở hữu). KHÔNG cấp
+-- execute cho client -- nếu lộ ra PostgREST, mọi user có thể ghi chitiet/congviec
+-- lên thiết bị bất kỳ, bỏ qua RLS + luồng duyệt. Thu hồi cả grant mặc định cho PUBLIC.
+revoke execute on function create_hang_muc_moi(uuid, text, text, text, int, text, numeric, text, numeric, text) from public;
 
 -- ---------------------------------------------------------------------------
 -- (4) propose_them_hang_muc: checksheet gọi 1 điểm cho mọi role. Người phụ

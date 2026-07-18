@@ -145,6 +145,26 @@ async function run() {
       );
     });
 
+    // (H) create_hang_muc_moi KHÔNG được lộ cho client: role 'authenticated' phải bị từ chối
+    await withFixture(c, async (fx) => {
+      // savepoint: lỗi permission denied bên dưới làm transaction hiện tại rơi
+      // vào trạng thái "aborted" (Postgres chặn mọi lệnh tiếp theo tới khi
+      // ROLLBACK) -> phải rollback to savepoint mới dùng lại connection được;
+      // việc này cũng tự undo 'set local role', khỏi cần 'reset role' riêng.
+      await c.query("savepoint sp_h");
+      await c.query("set local role authenticated");
+      await assert.rejects(
+        () =>
+          c.query(
+            `select create_hang_muc_moi($1,null,'x',null,null,'Kiểm tra',3,'Ngày',1,'ly do')`,
+            [fx.thietbiId],
+          ),
+        /permission denied/i,
+        "create_hang_muc_moi phải bị chặn cho role authenticated (chỉ gọi nội bộ)",
+      );
+      await c.query("rollback to savepoint sp_h");
+    });
+
     console.log("them-hang-muc.smoke.ts: PASS");
   } finally {
     await c.end();
