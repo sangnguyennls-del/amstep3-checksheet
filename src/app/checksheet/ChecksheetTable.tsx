@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { cellKey, type CongViecRow, type KetQua, type ThucHienMap } from "@/lib/checksheet/types";
 import type { EditabilityMap } from "@/lib/checksheet/editability";
 import { stripDiacritics } from "@/lib/filters";
+import { TAN_SUAT_UNITS } from "@/lib/checksheet/tanSuat";
 import { Cell, type PaintMode, type PaintOp } from "./Cell";
 
 const DENY_EDITABLE = { plan: false, act: false };
@@ -50,11 +51,12 @@ export function listDaysInRange(thangDau: string, thangCuoi: string): string[] {
   return days;
 }
 
-// 4 cột con của "Tần suất" đúng thứ tự trên mẫu giấy. `tan_suat_chu` là text
-// tự do (không có CHECK constraint ở DB, xem 0001_schema.sql) nên phải chuẩn
-// hoá (bỏ dấu, lowercase -- stripDiacritics ở lib/filters) trước khi so khớp
-// thay vì so chuỗi y nguyên.
-const TAN_SUAT_COLUMNS = ["Ngày", "Tuần", "Tháng", "Quý"] as const;
+// 4 cột con của "Tần suất" đúng thứ tự trên mẫu giấy -- dùng chung nguồn với
+// dropdown nhập liệu (TAN_SUAT_UNITS ở lib/checksheet/tanSuat). `tan_suat_chu`
+// vẫn là text tự do ở DB (không có CHECK constraint, xem 0001_schema.sql) nên
+// vẫn chuẩn hoá (bỏ dấu, lowercase -- stripDiacritics) trước khi so khớp để
+// dữ liệu cũ nhập tay lệch chuẩn không bị rơi mất cột.
+const TAN_SUAT_COLUMNS = TAN_SUAT_UNITS;
 
 const TAN_SUAT_KEYS = TAN_SUAT_COLUMNS.map(stripDiacritics);
 

@@ -139,9 +139,13 @@ export function PrintSheet({
             onSelectDay={noop}
             onAutoFillPlan={noop}
           />
-          <LanCapNhatCuoi thucHien={thucHien} />
         </div>
       </div>
+      {/* Mục 8 (sửa 2026-07-18): "Lần chỉnh sửa cuối" nằm NGOÀI hàng flex
+          items-stretch -- nếu để trong cột flex, khung viền ảnh thiết bị (giãn
+          theo items-stretch) sẽ kéo dài quá dòng tổng, bao luôn dòng này. Đưa
+          ra ngoài để viền ảnh dừng đúng ở dòng vàng "TỔNG THỜI GIAN". */}
+      <LanCapNhatCuoi thucHien={thucHien} />
     </div>
   );
 }

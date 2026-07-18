@@ -13,6 +13,7 @@ import {
   type EquipmentActionState,
 } from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
+import { tanSuatOptions } from "@/lib/checksheet/tanSuat";
 import { SearchableSelect } from "@/components/SearchableSelect";
 // Dùng lại đúng hàm mà checksheet/bản in dùng để đổi link Drive -> URL ảnh hiện
 // được, nên xem trước ở đây phản ánh CHÍNH XÁC những gì sẽ hiện trên phiếu.
@@ -218,7 +219,14 @@ function CreateCongViecForm({ chiTietId, thietBiId }: { chiTietId: string; thiet
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tần suất (chữ)</label>
-            <input name="tanSuatChu" className={inputClass()} />
+            <select name="tanSuatChu" defaultValue="" className={inputClass()}>
+              <option value="">(không)</option>
+              {tanSuatOptions().map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-700">Tần suất (số)</label>
@@ -288,11 +296,18 @@ function EditCongViecDialog({
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Tần suất (chữ)</label>
-            <input
+            <select
               name="tanSuatChu"
               defaultValue={congViec.tan_suat_chu ?? ""}
               className={inputClass()}
-            />
+            >
+              <option value="">(không)</option>
+              {tanSuatOptions(congViec.tan_suat_chu).map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Tần suất (số)</label>
