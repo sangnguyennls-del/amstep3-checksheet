@@ -1,0 +1,15 @@
+-- Vá lỗ hổng phát hiện khi deploy 0019 lên PRODUCTION: create_hang_muc_moi là
+-- HÀM NỘI BỘ (chỉ được gọi từ propose_them_hang_muc / resolve_de_xuat_congviec,
+-- cả hai đều SECURITY DEFINER). Migration 0019 chỉ `revoke ... from public`,
+-- NHƯNG Supabase hosted đặt sẵn DEFAULT PRIVILEGES cấp EXECUTE trên mọi function
+-- public MỚI cho anon + authenticated -- grant này KHÔNG bị `revoke from public`
+-- gỡ. Hệ quả trên prod: anon/authenticated GỌI TRỰC TIẾP được create_hang_muc_moi
+-- qua PostgREST (POST /rest/v1/rpc/create_hang_muc_moi), ghi chitiet/congviec lên
+-- thiết bị bất kỳ, BỎ QUA RLS + luồng đề xuất/duyệt (đúng lỗ hổng mà 0019 định
+-- đóng). Supabase LOCAL không cấu hình default privileges này nên smoke test (H)
+-- không phát hiện được -- chỉ lộ khi has_function_privilege() kiểm trên prod.
+--
+-- Thu hồi tường minh cho cả anon và authenticated. Lời gọi NỘI BỘ vẫn chạy bình
+-- thường vì 2 RPC gọi nó là SECURITY DEFINER (thực thi dưới quyền chủ sở hữu
+-- hàm, không phụ thuộc grant của role client).
+revoke execute on function create_hang_muc_moi(uuid, text, text, text, int, text, numeric, text, numeric, text) from anon, authenticated;
