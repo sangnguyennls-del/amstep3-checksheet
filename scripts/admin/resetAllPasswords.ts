@@ -3,12 +3,15 @@
 // nhất). Chạy tay khi cần, không đưa vào UI. Người dùng tự đổi lại mật khẩu
 // riêng bằng nút "Đổi mật khẩu" trên header sau khi đăng nhập.
 //
-// Cách chạy:
-//   npx tsx scripts/admin/resetAllPasswords.ts            # dry-run (mặc định): chỉ in danh sách sẽ reset
-//   npx tsx scripts/admin/resetAllPasswords.ts --commit   # reset thật qua Supabase Auth Admin API
+// Cách chạy (mặc định nạp .env.local = LOCAL; dùng --env để chọn file env khác):
+//   node scripts/admin/resetAllPasswords.ts                                      # dry-run trên .env.local (LOCAL)
+//   node scripts/admin/resetAllPasswords.ts --env .env.production.local           # dry-run trên PROD
+//   node scripts/admin/resetAllPasswords.ts --env .env.production.local --commit  # reset THẬT trên PROD
+// Script IN RÕ target host trước khi thao tác — kiểm đúng môi trường trước khi --commit
+// (footgun cũ: script âm thầm nạp .env.local = LOCAL nên reset nhầm vào DB local).
 //
-// Biến môi trường bắt buộc (đọc từ process.env, tự nạp thêm từ `.env.local`
-// theo đúng quy ước scripts/migrate/run.ts — KHÔNG ghi đè biến có sẵn):
+// Biến môi trường bắt buộc (đọc từ process.env, tự nạp thêm từ file --env —
+// KHÔNG ghi đè biến có sẵn):
 //   NEXT_PUBLIC_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 import { existsSync, readFileSync } from "node:fs";
@@ -18,12 +21,24 @@ import { createClient } from "@supabase/supabase-js";
 const NEW_PASSWORD = "123456";
 
 // -----------------------------------------------------------------------------
-// Nạp .env.local — parser đơn giản, copy từ scripts/audit/exportAndPurge.ts
-// (hàm tự chứa nhỏ, các thư mục scripts độc lập không share tiện ích chung).
+// Nạp file env chỉ định (mặc định .env.local; chạy prod dùng
+// --env .env.production.local) — parser đơn giản, copy từ
+// scripts/audit/exportAndPurge.ts (hàm tự chứa nhỏ, các thư mục scripts độc lập
+// không share tiện ích chung). Chỉ set biến khi process.env chưa có -> export
+// thủ công vẫn thắng.
 // -----------------------------------------------------------------------------
-function loadEnvLocal(): void {
-  const envPath = resolve(process.cwd(), ".env.local");
-  if (!existsSync(envPath)) return;
+function getEnvArg(): string {
+  const idx = process.argv.indexOf("--env");
+  if (idx !== -1 && process.argv[idx + 1]) return process.argv[idx + 1];
+  return ".env.local";
+}
+
+function loadEnvFile(envFile: string): void {
+  const envPath = resolve(process.cwd(), envFile);
+  if (!existsSync(envPath)) {
+    console.warn(`(Không thấy ${envFile} — bỏ qua nạp file, dùng biến môi trường sẵn có.)`);
+    return;
+  }
 
   const content = readFileSync(envPath, "utf-8");
   for (const rawLine of content.split(/\r?\n/)) {
@@ -59,10 +74,21 @@ function validateEnv(): { supabaseUrl: string; serviceRoleKey: string } {
 }
 
 async function main() {
-  loadEnvLocal();
+  const envFile = getEnvArg();
+  loadEnvFile(envFile);
   const { supabaseUrl, serviceRoleKey } = validateEnv();
   const commit = process.argv.includes("--commit");
 
+  let targetHost = supabaseUrl;
+  try {
+    targetHost = new URL(supabaseUrl).host;
+  } catch {
+    // giữ nguyên chuỗi gốc nếu URL không parse được
+  }
+  const isLocal = /127\.0\.0\.1|localhost/.test(targetHost);
+
+  console.log(`Nạp env từ: ${envFile}`);
+  console.log(`>>> TARGET Supabase: ${targetHost} (${isLocal ? "LOCAL" : "REMOTE/PROD"}) <<<`);
   console.log(
     `Chế độ chạy: ${commit ? "--commit (GHI THẬT: đổi mật khẩu qua Auth Admin API)" : "dry-run (mặc định, chỉ in danh sách)"}`,
   );
