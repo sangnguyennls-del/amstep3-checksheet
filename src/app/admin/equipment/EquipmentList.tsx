@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { createThietBi, deleteThietBi, type EquipmentActionState } from "@/app/actions/equipment";
+import {
+  assignNguoiPhuTrach,
+  createThietBi,
+  deleteThietBi,
+  type EquipmentActionState,
+} from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
 import { defaultIfAvailable, formatThietBiLabel } from "@/lib/filters";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -123,6 +128,40 @@ function uniqueSorted(values: (string | null)[]): string[] {
   return Array.from(new Set(values.filter((v): v is string => !!v))).sort();
 }
 
+// Việc #4: gán nhanh người phụ trách ngay trong bảng -- chọn là lưu luôn
+// (assignNguoiPhuTrach), không cần nút Lưu. Rollback hiển thị nếu lỗi.
+function AssignCell({ item, users }: { item: ThietBiRow; users: NguoiDungOption[] }) {
+  const [value, setValue] = useState(item.nguoi_phu_trach ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(msnv: string) {
+    const prev = value;
+    setValue(msnv);
+    setError(null);
+    startTransition(async () => {
+      const result = await assignNguoiPhuTrach(item.id, msnv || null);
+      if (result.error) {
+        setError(result.error);
+        setValue(prev); // trả lại giá trị cũ khi lưu hỏng
+      }
+    });
+  }
+
+  return (
+    <div className="flex min-w-[13rem] flex-col gap-1">
+      <SearchableSelect
+        value={value}
+        onChange={handleChange}
+        placeholder="— Chưa gán —"
+        options={users.map((u) => ({ value: u.msnv, label: `${u.ho_ten} (${u.msnv})` }))}
+      />
+      {isPending ? <span className="text-xs text-gray-400">Đang lưu…</span> : null}
+      {error ? <span className="text-xs text-red-600">{error}</span> : null}
+    </div>
+  );
+}
+
 export function EquipmentList({
   items,
   users,
@@ -134,7 +173,6 @@ export function EquipmentList({
 }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const nameByMsnv = new Map(users.map((u) => [u.msnv, u.ho_ten]));
 
   // Việc 1: mặc định lọc theo hồ sơ người đang đăng nhập (Xưởng/Nhóm nhỏ/
   // Nhân viên phụ trách), người dùng vẫn tự do đổi lại sau đó. Function
@@ -254,10 +292,8 @@ export function EquipmentList({
                 <td className="px-4 py-2.5">{item.ten_thiet_bi}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.xuong ?? ""}</td>
                 <td className="px-4 py-2.5 text-gray-600">{item.nhom ?? ""}</td>
-                <td className="px-4 py-2.5 text-gray-600">
-                  {item.nguoi_phu_trach
-                    ? `${nameByMsnv.get(item.nguoi_phu_trach) ?? "?"} (${item.nguoi_phu_trach})`
-                    : "— Chưa gán —"}
+                <td className="px-4 py-2.5">
+                  <AssignCell item={item} users={users} />
                 </td>
                 <td className="px-4 py-2.5">
                   <div className="flex gap-2">

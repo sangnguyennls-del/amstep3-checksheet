@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DeXuatCongViecItem } from "@/lib/checksheet/deXuatCongViecList";
 import { resolveDeXuatCongViec, type ResolveDeXuatState } from "@/app/actions/deXuatCongViec";
+import { formatThietBiLabel } from "@/lib/filters";
 import { ui } from "@/lib/ui";
 
 // Định nghĩa state ban đầu ở đây (client), không import từ file "use server"
@@ -22,6 +23,7 @@ const LOAI_DE_XUAT_LABEL: Record<DeXuatCongViecItem["loaiDeXuat"], string> = {
   sua: "Sửa thời gian/tần suất",
   loai_bo: "Loại bỏ",
   them: "Thêm hạng mục",
+  khoi_phuc: "Khôi phục",
 };
 
 // Mặc định chỉ hiện "Chờ duyệt" -- đây là hàng đợi cần xử lý, đúng tinh thần
@@ -55,6 +57,9 @@ function ChangeSummary({ item }: { item: DeXuatCongViecItem }) {
   if (item.loaiDeXuat === "loai_bo") {
     return <span className="text-gray-600">Loại bỏ khỏi checksheet (giữ lịch sử)</span>;
   }
+  if (item.loaiDeXuat === "khoi_phuc") {
+    return <span className="text-gray-600">Khôi phục — hiện lại từ tháng sau</span>;
+  }
   return (
     <div className="flex flex-col gap-0.5 text-xs">
       <span>
@@ -86,7 +91,7 @@ function RowResolveForm({ item }: { item: DeXuatCongViecItem }) {
   if (item.trangThai !== "Chờ duyệt") {
     return (
       <div className="text-xs text-gray-500">
-        {item.nguoiDuyet ? `${item.nguoiDuyet}` : "—"}
+        <span title={item.nguoiDuyet ?? undefined}>{item.nguoiDuyetTen ?? item.nguoiDuyet ?? "—"}</span>
         {item.trangThai === "Từ chối" && item.lyDoTuChoi ? ` — ${item.lyDoTuChoi}` : null}
       </div>
     );
@@ -124,23 +129,34 @@ function RowResolveForm({ item }: { item: DeXuatCongViecItem }) {
           </div>
         </>
       ) : (
-        <div className="flex gap-1.5">
-          <button
-            type="submit"
-            name="hanhDong"
-            value="duyet"
-            disabled={isPending}
-            className={`${ui.buttonPrimary} px-2! py-1! text-xs!`}
-          >
-            {isPending ? "Đang lưu..." : "Duyệt"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowReject(true)}
-            className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-          >
-            Từ chối
-          </button>
+        <div className="flex flex-col gap-1.5">
+          {/* #6: duyệt kèm áp dụng ngay tháng hiện tại (không đợi tháng sau).
+              Không áp dụng cho đề xuất 'Khôi phục' (vốn đã hiện lại từ tháng
+              này). RPC tự bỏ qua nếu người duyệt không phải admin. */}
+          {item.loaiDeXuat !== "khoi_phuc" ? (
+            <label className="flex items-center gap-1.5 text-xs text-gray-600">
+              <input type="checkbox" name="apDungNgay" />
+              Áp dụng ngay tháng này
+            </label>
+          ) : null}
+          <div className="flex gap-1.5">
+            <button
+              type="submit"
+              name="hanhDong"
+              value="duyet"
+              disabled={isPending}
+              className={`${ui.buttonPrimary} px-2! py-1! text-xs!`}
+            >
+              {isPending ? "Đang lưu..." : "Duyệt"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReject(true)}
+              className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+            >
+              Từ chối
+            </button>
+          </div>
         </div>
       )}
       {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
@@ -148,8 +164,79 @@ function RowResolveForm({ item }: { item: DeXuatCongViecItem }) {
   );
 }
 
+// Việc #8: gom đề xuất theo THIẾT BỊ (mã) thay vì bảng phẳng dài. Giữ thứ tự
+// xuất hiện đầu tiên (initialItems đã sort created_at desc).
+type DeviceGroup = {
+  maThietBi: string;
+  label: string;
+  items: DeXuatCongViecItem[];
+  pendingCount: number;
+};
+
+const UNKNOWN_DEVICE_KEY = "(không rõ thiết bị)";
+
+function groupByThietBi(items: DeXuatCongViecItem[]): DeviceGroup[] {
+  const map = new Map<string, DeXuatCongViecItem[]>();
+  for (const it of items) {
+    const key = it.maThietBi || UNKNOWN_DEVICE_KEY;
+    const arr = map.get(key);
+    if (arr) arr.push(it);
+    else map.set(key, [it]);
+  }
+  return Array.from(map.entries()).map(([maThietBi, groupItems]) => ({
+    maThietBi,
+    label:
+      maThietBi === UNKNOWN_DEVICE_KEY
+        ? UNKNOWN_DEVICE_KEY
+        : formatThietBiLabel(maThietBi, groupItems[0]?.tenThietBi ?? ""),
+    items: groupItems,
+    pendingCount: groupItems.filter((i) => i.trangThai === "Chờ duyệt").length,
+  }));
+}
+
+// 1 dòng đề xuất bên trong nhóm thiết bị (không lặp lại cột Thiết bị -- đã là
+// tiêu đề nhóm). Tái dùng ChangeSummary + RowResolveForm.
+function ProposalRow({ item }: { item: DeXuatCongViecItem }) {
+  return (
+    <tr className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
+      <td className="px-3 py-2.5 whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
+      <td className="px-3 py-2.5">
+        {item.loaiDeXuat === "them" ? (item.chiTietChonTen ?? item.tenChiTietMoi ?? "—") : item.tenChiTiet}
+        <br />
+        <span className="text-xs text-gray-500">
+          {item.loaiDeXuat === "them" ? (item.loaiHoatDongMoi ?? "") : item.loaiHoatDong}
+        </span>
+      </td>
+      <td className="px-3 py-2.5 whitespace-nowrap">{LOAI_DE_XUAT_LABEL[item.loaiDeXuat]}</td>
+      <td className="px-3 py-2.5">
+        <ChangeSummary item={item} />
+      </td>
+      <td className="px-3 py-2.5">{item.lyDo}</td>
+      <td className="px-3 py-2.5 whitespace-nowrap" title={item.nguoiDeXuat}>
+        {item.nguoiDeXuatTen ?? item.nguoiDeXuat}
+      </td>
+      <td className="px-3 py-2.5 whitespace-nowrap">
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRANG_THAI_BADGE[item.trangThai]}`}>
+          {item.trangThai}
+        </span>
+      </td>
+      <td className="px-3 py-2.5">
+        <RowResolveForm item={item} />
+      </td>
+    </tr>
+  );
+}
+
 export function DeXuatCongViecList({ initialItems }: { initialItems: DeXuatCongViecItem[] }) {
   const [selected, setSelected] = useState<Set<string>>(DEFAULT_SELECTED);
+  // Mặc định mở nhóm thiết bị đang có đề xuất "Chờ duyệt" (hàng đợi cần xử lý).
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const it of initialItems) {
+      if (it.trangThai === "Chờ duyệt") s.add(it.maThietBi || UNKNOWN_DEVICE_KEY);
+    }
+    return s;
+  });
 
   function toggle(trangThai: string) {
     setSelected((prev) => {
@@ -167,10 +254,20 @@ export function DeXuatCongViecList({ initialItems }: { initialItems: DeXuatCongV
     setSelected(new Set(TRANG_THAI_LIST));
   }
 
+  function toggleGroup(ma: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(ma)) next.delete(ma);
+      else next.add(ma);
+      return next;
+    });
+  }
+
   const filtered = useMemo(
     () => initialItems.filter((item) => selected.has(item.trangThai)),
     [initialItems, selected],
   );
+  const groups = useMemo(() => groupByThietBi(filtered), [filtered]);
 
   return (
     <div>
@@ -189,61 +286,60 @@ export function DeXuatCongViecList({ initialItems }: { initialItems: DeXuatCongV
         </button>
       </div>
 
-      <div className={`overflow-x-auto ${ui.card} p-0!`}>
-        <table className="min-w-full text-sm">
-          <thead className="border-b border-[#dee2e6] bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
-            <tr>
-              <th className="px-3 py-2.5">Ngày đề xuất</th>
-              <th className="px-3 py-2.5">Thiết bị</th>
-              <th className="px-3 py-2.5">Chi tiết / Loại</th>
-              <th className="px-3 py-2.5">Loại đề xuất</th>
-              <th className="px-3 py-2.5">Thay đổi</th>
-              <th className="px-3 py-2.5">Lý do</th>
-              <th className="px-3 py-2.5">Người đề xuất</th>
-              <th className="px-3 py-2.5">Trạng thái</th>
-              <th className="px-3 py-2.5">Duyệt / Người duyệt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
-                <td className="px-3 py-2.5 whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
-                <td className="px-3 py-2.5 font-medium whitespace-nowrap text-gray-900">
-                  {item.maThietBi} — {item.tenThietBi}
-                </td>
-                <td className="px-3 py-2.5">
-                  {item.loaiDeXuat === "them" ? (item.chiTietChonTen ?? item.tenChiTietMoi ?? "—") : item.tenChiTiet}
-                  <br />
-                  <span className="text-xs text-gray-500">
-                    {item.loaiDeXuat === "them" ? (item.loaiHoatDongMoi ?? "") : item.loaiHoatDong}
+      {groups.length === 0 ? (
+        <p className={`p-8 text-center text-sm text-gray-400 ${ui.card}`}>
+          Không có đề xuất nào phù hợp bộ lọc.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {groups.map((g) => {
+            const isOpen = expanded.has(g.maThietBi);
+            return (
+              <div key={g.maThietBi} className={`overflow-hidden ${ui.card} p-0!`}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(g.maThietBi)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="text-gray-400">{isOpen ? "▾" : "▸"}</span>
+                    <span className="truncate font-medium text-gray-900">{g.label}</span>
+                    <span className="whitespace-nowrap text-xs text-gray-500">({g.items.length} đề xuất)</span>
                   </span>
-                </td>
-                <td className="px-3 py-2.5 whitespace-nowrap">{LOAI_DE_XUAT_LABEL[item.loaiDeXuat]}</td>
-                <td className="px-3 py-2.5">
-                  <ChangeSummary item={item} />
-                </td>
-                <td className="px-3 py-2.5">{item.lyDo}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap">{item.nguoiDeXuat}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRANG_THAI_BADGE[item.trangThai]}`}>
-                    {item.trangThai}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5">
-                  <RowResolveForm item={item} />
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-gray-400">
-                  Không có đề xuất nào phù hợp bộ lọc.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                  {g.pendingCount > 0 ? (
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      {g.pendingCount} chờ duyệt
+                    </span>
+                  ) : null}
+                </button>
+                {isOpen ? (
+                  <div className="overflow-x-auto border-t border-[#dee2e6]">
+                    <table className="min-w-full text-sm">
+                      <thead className="border-b border-[#dee2e6] bg-gray-50 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
+                        <tr>
+                          <th className="px-3 py-2.5">Ngày đề xuất</th>
+                          <th className="px-3 py-2.5">Chi tiết / Loại</th>
+                          <th className="px-3 py-2.5">Loại đề xuất</th>
+                          <th className="px-3 py-2.5">Thay đổi</th>
+                          <th className="px-3 py-2.5">Lý do</th>
+                          <th className="px-3 py-2.5">Người đề xuất</th>
+                          <th className="px-3 py-2.5">Trạng thái</th>
+                          <th className="px-3 py-2.5">Duyệt / Người duyệt</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {g.items.map((item) => (
+                          <ProposalRow key={item.id} item={item} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

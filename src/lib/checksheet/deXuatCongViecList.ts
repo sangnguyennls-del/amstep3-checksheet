@@ -12,14 +12,16 @@ function firstOrNull<T>(v: T | T[] | null | undefined): T | null {
 export type DeXuatCongViecItem = {
   id: string;
   congViecId: string | null; // null với loaiDeXuat === "them"
-  loaiDeXuat: "sua" | "loai_bo" | "them";
+  loaiDeXuat: "sua" | "loai_bo" | "them" | "khoi_phuc";
   thoiGianMoi: number | null;
   tanSuatChuMoi: string | null;
   tanSuatSoMoi: number | null;
   lyDo: string;
   trangThai: "Chờ duyệt" | "Đã duyệt" | "Từ chối";
-  nguoiDeXuat: string;
-  nguoiDuyet: string | null;
+  nguoiDeXuat: string; // MSNV
+  nguoiDeXuatTen: string | null; // họ tên (join nguoidung)
+  nguoiDuyet: string | null; // MSNV
+  nguoiDuyetTen: string | null; // họ tên (join nguoidung)
   lyDoTuChoi: string | null;
   createdAt: string;
   // Giá trị HIỆN TẠI của congviec, để so sánh với *Moi -- lấy trực tiếp từ
@@ -55,7 +57,7 @@ type ChiTietDirectJoin = { ten_chi_tiet: string };
 type DeXuatJoinRow = {
   id: string;
   congviec_id: string | null;
-  loai_de_xuat: "sua" | "loai_bo" | "them";
+  loai_de_xuat: "sua" | "loai_bo" | "them" | "khoi_phuc";
   thoi_gian_moi: number | null;
   tan_suat_chu_moi: string | null;
   tan_suat_so_moi: number | null;
@@ -75,6 +77,9 @@ type DeXuatJoinRow = {
   loai_hoat_dong_moi: string | null;
   thietbi: ThietBiJoin | ThietBiJoin[] | null;
   chitiet: ChiTietDirectJoin | ChiTietDirectJoin[] | null;
+  // Join họ tên qua 2 FK cùng trỏ nguoidung(msnv) -- disambiguate bằng tên cột.
+  nguoi_de_xuat_nd: { ho_ten: string } | { ho_ten: string }[] | null;
+  nguoi_duyet_nd: { ho_ten: string } | { ho_ten: string }[] | null;
 };
 
 export async function getDeXuatCongViecList(
@@ -89,6 +94,8 @@ export async function getDeXuatCongViecList(
        thietbi_id, chitiet_id, ten_chi_tiet_moi, dieu_kien_co_ban_moi, stt_moi, loai_hoat_dong_moi,
        thietbi ( ma_thiet_bi, ten_thiet_bi ),
        chitiet ( ten_chi_tiet ),
+       nguoi_de_xuat_nd:nguoidung!nguoi_de_xuat ( ho_ten ),
+       nguoi_duyet_nd:nguoidung!nguoi_duyet ( ho_ten ),
        congviec ( loai_hoat_dong, thoi_gian, tan_suat_chu, tan_suat_so,
          chitiet!inner ( ten_chi_tiet, thietbi!inner ( ma_thiet_bi, ten_thiet_bi ) ) )`,
     )
@@ -122,7 +129,9 @@ export async function getDeXuatCongViecList(
       lyDo: r.ly_do,
       trangThai: r.trang_thai,
       nguoiDeXuat: r.nguoi_de_xuat,
+      nguoiDeXuatTen: firstOrNull(r.nguoi_de_xuat_nd)?.ho_ten ?? null,
       nguoiDuyet: r.nguoi_duyet,
+      nguoiDuyetTen: firstOrNull(r.nguoi_duyet_nd)?.ho_ten ?? null,
       lyDoTuChoi: r.ly_do_tu_choi,
       createdAt: r.created_at,
       thoiGianHienTai: congViec?.thoi_gian ?? null,

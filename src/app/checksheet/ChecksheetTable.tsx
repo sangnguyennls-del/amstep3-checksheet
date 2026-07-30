@@ -141,6 +141,7 @@ export function ChecksheetTable({
   pendingCongViecIds,
   onEditCongViec,
   onRemoveCongViec,
+  onRestoreCongViec,
   onSetPlan,
   onSetAct,
   onRequestBatThuong,
@@ -168,6 +169,9 @@ export function ChecksheetTable({
   pendingCongViecIds: Set<string>;
   onEditCongViec: (row: CongViecRow) => void;
   onRemoveCongViec: (row: CongViecRow) => void;
+  /** #2: khôi phục 1 công việc "Loại bỏ từ tháng sau" (còn hiển thị tháng này)
+   * -> hiện lại từ tháng sau. Chỉ gọi cho dòng bị loại bỏ (thay_the_boi null). */
+  onRestoreCongViec: (row: CongViecRow) => void;
   onSetPlan: (congViecId: string, ngay: string, keHoach: boolean) => void;
   onSetAct: (congViecId: string, ngay: string, ketQua: KetQua) => void;
   /** Task 4: mở modal ghi nhận bất thường (xem Cell.tsx). */
@@ -389,16 +393,40 @@ export function ChecksheetTable({
                 {printMode ? null : (
                 <td className="no-print border border-[#dee2e6] px-1 py-1 text-center">
                   {isEndingThisMonth ? (
-                    <span
-                      className="rounded-full bg-[#e9ecef] px-1.5 py-0.5 text-[10px] font-medium text-[#6c757d]"
-                      title={
-                        row.thayTheBoi
-                          ? "Đã duyệt sửa -- giá trị mới áp dụng từ tháng sau, tháng này giữ giá trị cũ"
-                          : "Đã duyệt loại bỏ -- ngừng hiện trên checksheet từ tháng sau"
-                      }
-                    >
-                      {row.thayTheBoi ? "Đổi từ tháng sau" : "Loại bỏ từ tháng sau"}
-                    </span>
+                    pendingCongViecIds.has(row.congViecId) ? (
+                      // Đã có đề xuất (vd khôi phục) đang chờ duyệt trên chính dòng này.
+                      <span
+                        className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"
+                        title="Đề xuất đang chờ Admin duyệt"
+                      >
+                        Chờ duyệt
+                      </span>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className="rounded-full bg-[#e9ecef] px-1.5 py-0.5 text-[10px] font-medium text-[#6c757d]"
+                          title={
+                            row.thayTheBoi
+                              ? "Đã duyệt sửa -- giá trị mới áp dụng từ tháng sau, tháng này giữ giá trị cũ"
+                              : "Đã duyệt loại bỏ -- ngừng hiện trên checksheet từ tháng sau"
+                          }
+                        >
+                          {row.thayTheBoi ? "Đổi từ tháng sau" : "Loại bỏ từ tháng sau"}
+                        </span>
+                        {/* #2: chỉ dòng BỊ LOẠI BỎ (không phải superseded do sửa)
+                            mới khôi phục được -> hiện lại từ tháng sau. */}
+                        {!row.thayTheBoi && canManageCongViec ? (
+                          <button
+                            type="button"
+                            className="rounded border border-[#198754] px-1.5 text-[10px] leading-4 text-[#198754] hover:bg-[#198754] hover:text-white"
+                            title="Khôi phục hạng mục này -- hiện lại từ tháng sau"
+                            onClick={() => onRestoreCongViec(row)}
+                          >
+                            Khôi phục
+                          </button>
+                        ) : null}
+                      </div>
+                    )
                   ) : pendingCongViecIds.has(row.congViecId) ? (
                     <span
                       className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"

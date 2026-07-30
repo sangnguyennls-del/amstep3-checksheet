@@ -15,7 +15,7 @@ export type EditCongViecTarget = {
 
 export type EditCongViecResult = {
   congViecId: string;
-  mode: "edit" | "remove";
+  mode: "edit" | "remove" | "restore";
   thoiGian: number | null;
   tanSuatChu: string | null;
   tanSuatSo: number | null;
@@ -46,12 +46,16 @@ export function EditCongViecModal({
   open,
   mode,
   target,
+  isAdmin = false,
   onClose,
   onSuccess,
 }: {
   open: boolean;
-  mode: "edit" | "remove";
+  mode: "edit" | "remove" | "restore";
   target: EditCongViecTarget | null;
+  /** #6: chỉ admin mới được tick "Áp dụng ngay tháng hiện tại" (đặc quyền
+   * ghi đè bất biến next-month). Người phụ trách thường -> luôn next-month. */
+  isAdmin?: boolean;
   onClose: () => void;
   onSuccess: (result: EditCongViecResult) => void;
 }) {
@@ -69,10 +73,15 @@ export function EditCongViecModal({
     target?.tanSuatSo != null ? String(target.tanSuatSo) : "",
   );
   const [lyDo, setLyDo] = useState("");
+  // #6: "Áp dụng ngay tháng hiện tại" -- chỉ admin, chỉ edit/remove (restore
+  // vốn đã hiện lại từ tháng này nên không cần).
+  const [apDungNgay, setApDungNgay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!open || !target) return null;
+
+  const showApplyNow = isAdmin && (mode === "edit" || mode === "remove");
 
   const lyDoError = lyDo.trim().length === 0 ? "Lý do là bắt buộc" : null;
 
@@ -88,19 +97,21 @@ export function EditCongViecModal({
     setError(null);
     try {
       const supabase = createClient();
-      if (mode === "remove") {
+      if (mode === "remove" || mode === "restore") {
+        // khoi_phuc không dùng apply-now (đã hiện lại từ tháng này khi mở cửa sổ).
         const { data, error: rpcError } = await supabase.rpc("propose_congviec_change", {
           p_congviec_id: target.congViecId,
-          p_loai_de_xuat: "loai_bo",
+          p_loai_de_xuat: mode === "remove" ? "loai_bo" : "khoi_phuc",
           p_thoi_gian: null,
           p_tan_suat_chu: null,
           p_tan_suat_so: null,
           p_ly_do: lyDo.trim(),
+          p_ap_dung_ngay: mode === "remove" ? apDungNgay : false,
         });
         if (rpcError) throw rpcError;
         onSuccess({
           congViecId: target.congViecId,
-          mode: "remove",
+          mode,
           thoiGian: target.thoiGian,
           tanSuatChu: target.tanSuatChu,
           tanSuatSo: target.tanSuatSo,
@@ -122,6 +133,7 @@ export function EditCongViecModal({
           p_tan_suat_chu: tanSuatChu.trim() || null,
           p_tan_suat_so: tanSuatSoNum,
           p_ly_do: lyDo.trim(),
+          p_ap_dung_ngay: apDungNgay,
         });
         if (rpcError) throw rpcError;
         onSuccess({
@@ -139,7 +151,9 @@ export function EditCongViecModal({
           ? e.message
           : mode === "remove"
             ? "Không loại bỏ được công việc"
-            : "Không lưu được thay đổi",
+            : mode === "restore"
+              ? "Không khôi phục được công việc"
+              : "Không lưu được thay đổi",
       );
     } finally {
       setSubmitting(false);
@@ -150,7 +164,11 @@ export function EditCongViecModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-md border border-[#dee2e6] bg-white p-4 shadow-lg">
         <h2 className="mb-1 text-base font-semibold text-gray-800">
-          {mode === "remove" ? "Loại bỏ công việc" : "Sửa thời gian / tần suất"}
+          {mode === "remove"
+            ? "Loại bỏ công việc"
+            : mode === "restore"
+              ? "Khôi phục công việc"
+              : "Sửa thời gian / tần suất"}
         </h2>
         <p className="mb-3 text-sm text-gray-500">
           {target.tenChiTiet} -- {target.loaiHoatDong} ({target.congViecId})
@@ -197,16 +215,34 @@ export function EditCongViecModal({
                 </div>
               </div>
               <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-                Giá trị mới sẽ áp dụng từ đầu tháng sau -- checksheet tháng này và các tháng
-                trước vẫn giữ giá trị cũ.
+                {apDungNgay
+                  ? "Giá trị mới áp dụng NGAY THÁNG NÀY -- tháng này sẽ hiển thị giá trị mới, các tháng trước giữ giá trị cũ."
+                  : "Giá trị mới sẽ áp dụng từ đầu tháng sau -- checksheet tháng này và các tháng trước vẫn giữ giá trị cũ."}
               </p>
             </>
-          ) : (
+          ) : mode === "remove" ? (
             <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Công việc này sẽ ngừng hiện trên checksheet từ tháng sau (loại bỏ mềm, giữ lại lịch sử
-              để tính giờ tiết kiệm được -- không xoá dữ liệu).
+              {apDungNgay
+                ? "⚠ Loại bỏ NGAY THÁNG NÀY -- công việc biến khỏi tháng này; các ô Kế hoạch/Thực tế đã chấm tháng này (không có bất thường) sẽ bị xoá. Không thể hoàn tác các ô đã xoá."
+                : "Công việc này sẽ ngừng hiện trên checksheet từ tháng sau (loại bỏ mềm, giữ lại lịch sử để tính giờ tiết kiệm được -- không xoá dữ liệu)."}
+            </p>
+          ) : (
+            <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              Hạng mục này sẽ hiện lại trên checksheet từ đầu tháng sau (sau khi được duyệt) -- các
+              tháng đã ẩn không bị đụng.
             </p>
           )}
+
+          {showApplyNow ? (
+            <label className="flex items-center gap-2 rounded-md border border-[#ced4da] bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={apDungNgay}
+                onChange={(e) => setApDungNgay(e.target.checked)}
+              />
+              Áp dụng ngay tháng hiện tại (không đợi tháng sau)
+            </label>
+          ) : null}
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">
@@ -220,7 +256,9 @@ export function EditCongViecModal({
               placeholder={
                 mode === "remove"
                   ? "Vì sao không cần kiểm tra hạng mục này nữa..."
-                  : "Vì sao cần đổi thời gian/tần suất..."
+                  : mode === "restore"
+                    ? "Vì sao cần khôi phục hạng mục này..."
+                    : "Vì sao cần đổi thời gian/tần suất..."
               }
               required
             />
@@ -243,11 +281,19 @@ export function EditCongViecModal({
               className={
                 mode === "remove"
                   ? "rounded-full bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                  : "rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-50"
+                  : mode === "restore"
+                    ? "rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    : "rounded-md bg-[#0d6efd] px-3 py-2 text-sm font-medium text-white hover:bg-[#0b5ed7] disabled:opacity-50"
               }
               disabled={submitting || !!lyDoError}
             >
-              {submitting ? "Đang lưu..." : mode === "remove" ? "Loại bỏ" : "Lưu"}
+              {submitting
+                ? "Đang lưu..."
+                : mode === "remove"
+                  ? "Loại bỏ"
+                  : mode === "restore"
+                    ? "Khôi phục"
+                    : "Lưu"}
             </button>
           </div>
         </form>

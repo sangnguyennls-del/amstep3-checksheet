@@ -25,6 +25,9 @@ export async function resolveDeXuatCongViec(
   const id = String(formData.get("id") ?? "").trim();
   const hanhDong = String(formData.get("hanhDong") ?? "").trim();
   const lyDoTuChoi = String(formData.get("lyDoTuChoi") ?? "").trim() || null;
+  // #6: admin tick "Áp dụng ngay tháng hiện tại" khi duyệt (mặc định false =
+  // hiệu lực từ tháng sau). RPC tự bỏ qua nếu người duyệt không phải admin.
+  const apDungNgay = formData.get("apDungNgay") != null;
 
   if (!id) {
     return { error: "Thiếu ID đề xuất" };
@@ -41,6 +44,7 @@ export async function resolveDeXuatCongViec(
     p_de_xuat_id: id,
     p_hanh_dong: hanhDong,
     p_ly_do_tu_choi: lyDoTuChoi,
+    p_ap_dung_ngay: apDungNgay,
   });
 
   if (error) {

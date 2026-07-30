@@ -14,12 +14,15 @@ export function ThemHangMucModal({
   open,
   thietBiId,
   chiTietList,
+  isAdmin = false,
   onClose,
   onSuccess,
 }: {
   open: boolean;
   thietBiId: string | null;
   chiTietList: { id: string; ten: string }[];
+  /** #6: chỉ admin mới được tick "Áp dụng ngay tháng hiện tại". */
+  isAdmin?: boolean;
   onClose: () => void;
   onSuccess?: (applied: boolean) => void;
 }) {
@@ -33,12 +36,14 @@ export function ThemHangMucModal({
   const [tanSuatChu, setTanSuatChu] = useState("");
   const [tanSuatSo, setTanSuatSo] = useState("");
   const [lyDo, setLyDo] = useState("");
+  // #6: áp dụng ngay tháng hiện tại (đặc quyền admin).
+  const [apDungNgay, setApDungNgay] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Màn hình kết quả sau khi gửi: applied=true (admin áp ngay) hoặc false (đã
   // gửi đề xuất chờ duyệt). Hạng mục mới thuộc THÁNG SAU nên không mutate lưới
   // tháng đang xem -- chỉ báo cho người dùng rồi để họ đóng.
-  const [result, setResult] = useState<{ applied: boolean } | null>(null);
+  const [result, setResult] = useState<{ applied: boolean; apDungNgay: boolean } | null>(null);
 
   if (!open || !thietBiId) return null;
 
@@ -79,10 +84,11 @@ export function ThemHangMucModal({
         p_tan_suat_chu: tanSuatChu.trim() || null,
         p_tan_suat_so: tanSuatSoNum,
         p_ly_do: lyDo.trim(),
+        p_ap_dung_ngay: apDungNgay,
       });
       if (rpcError) throw rpcError;
       const applied = !!data?.applied;
-      setResult({ applied });
+      setResult({ applied, apDungNgay: apDungNgay && applied });
       onSuccess?.(applied);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không gửi được đề xuất");
@@ -105,7 +111,9 @@ export function ThemHangMucModal({
             </h2>
             <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
               {result.applied
-                ? "Hạng mục đã được thêm, có hiệu lực từ đầu tháng sau."
+                ? result.apDungNgay
+                  ? "Hạng mục đã được thêm, có hiệu lực TỪ THÁNG HIỆN TẠI."
+                  : "Hạng mục đã được thêm, có hiệu lực từ đầu tháng sau."
                 : "Đề xuất đã gửi tới Admin cùng Nhóm để duyệt. Khi được duyệt, hạng mục sẽ có hiệu lực từ đầu tháng sau."}
             </p>
             <div className="flex justify-end">
@@ -249,6 +257,17 @@ export function ThemHangMucModal({
                   />
                 </div>
               </div>
+
+              {isAdmin ? (
+                <label className="flex items-center gap-2 rounded-md border border-[#ced4da] bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={apDungNgay}
+                    onChange={(e) => setApDungNgay(e.target.checked)}
+                  />
+                  Áp dụng ngay tháng hiện tại (không đợi tháng sau)
+                </label>
+              ) : null}
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">

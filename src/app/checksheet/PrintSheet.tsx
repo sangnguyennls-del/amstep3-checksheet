@@ -132,6 +132,7 @@ export function PrintSheet({
             pendingCongViecIds={EMPTY_PENDING}
             onEditCongViec={noop}
             onRemoveCongViec={noop}
+            onRestoreCongViec={noop}
             onSetPlan={noop}
             onSetAct={noop}
             onRequestBatThuong={noop}

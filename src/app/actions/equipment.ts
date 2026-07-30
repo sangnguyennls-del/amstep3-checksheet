@@ -120,6 +120,37 @@ export async function updateThietBi(
   return { error: null, success: true };
 }
 
+// Việc #4: gán nhanh người phụ trách ngay trên bảng danh sách thiết bị
+// (không phải mở trang chi tiết + lưu cả form). Chỉ đụng đúng cột
+// nguoi_phu_trach nên không cần các trường khác của updateThietBi.
+export async function assignNguoiPhuTrach(
+  thietBiId: string,
+  msnv: string | null,
+): Promise<{ error: string | null }> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Không có quyền truy cập" };
+  }
+
+  if (!thietBiId) {
+    return { error: "Thiếu ID thiết bị" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("thietbi")
+    .update({ nguoi_phu_trach: msnv || null })
+    .eq("id", thietBiId);
+
+  if (error) {
+    return { error: friendlyFkError(error.message) };
+  }
+
+  revalidatePath("/admin/equipment");
+  return { error: null };
+}
+
 export async function deleteThietBi(id: string): Promise<{ error: string | null }> {
   try {
     await requireAdmin();

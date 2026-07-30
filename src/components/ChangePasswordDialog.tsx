@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
+import { createPortal } from "react-dom";
 import { changeOwnPassword, type ChangePasswordState } from "@/app/actions/auth";
 import { ui } from "@/lib/ui";
 
@@ -15,7 +16,11 @@ const initialState: ChangePasswordState = { error: null };
 function ChangePasswordForm({ onClose }: { onClose: () => void }) {
   const [state, formAction, isPending] = useActionState(changeOwnPassword, initialState);
 
-  return (
+  // Portal ra document.body: header/nav bọc component này có `backdrop-blur`
+  // (backdrop-filter ≠ none) -> trở thành containing block của con `fixed`,
+  // khiến modal bị nhốt trong dải header, dồn lên đỉnh, nút không với tới.
+  // Đưa ra ngoài body để `fixed inset-0` bám đúng viewport.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-[2px]">
       <div className="w-full max-w-sm rounded-xl border border-[#dee2e6] bg-white p-5 shadow-xl">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Đổi mật khẩu</h2>
@@ -72,7 +77,8 @@ function ChangePasswordForm({ onClose }: { onClose: () => void }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

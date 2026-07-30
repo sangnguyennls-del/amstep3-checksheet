@@ -24,6 +24,8 @@ import { BatThuongModal } from "./BatThuongModal";
 import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } from "./EditCongViecModal";
 import { EquipmentImageModal, toDriveImageSrc } from "./EquipmentImageModal";
 import { ThemHangMucModal } from "./ThemHangMucModal";
+import { LichSuThietBiModal } from "./LichSuThietBiModal";
+import { getThietBiLichSu, type LichSuRow } from "@/lib/checksheet/thietBiLichSu";
 import { chiTietOptions } from "@/lib/checksheet/chiTietOptions";
 import checksheetStyles from "./checksheet.module.css";
 import "./print.css";
@@ -198,7 +200,7 @@ export function ChecksheetApp({
   // Việc C: modal "Sửa thời gian/tần suất" hoặc "Loại bỏ" 1 công việc, mở từ
   // nút trên ChecksheetTable -- null khi không có modal nào đang mở.
   const [editTarget, setEditTarget] = useState<{
-    mode: "edit" | "remove";
+    mode: "edit" | "remove" | "restore";
     target: EditCongViecTarget;
   } | null>(null);
   // Việc 2: congViecId nào đang có đề xuất "Chờ duyệt" -- ẩn nút Sửa/Xoá +
@@ -207,6 +209,12 @@ export function ChecksheetApp({
   const [pendingCongViecIds, setPendingCongViecIds] = useState<Set<string>>(new Set());
   // Task C: modal "Đề xuất thêm hạng mục" mở từ nút trên checksheet.
   const [themOpen, setThemOpen] = useState(false);
+  // #3: modal "Lịch sử thay đổi thiết bị" -- nạp dữ liệu lúc bấm (trong onClick,
+  // KHÔNG dùng useEffect) để tránh lint set-state-in-effect; modal chỉ hiển thị.
+  const [lichSuOpen, setLichSuOpen] = useState(false);
+  const [lichSuRows, setLichSuRows] = useState<LichSuRow[]>([]);
+  const [lichSuLoading, setLichSuLoading] = useState(false);
+  const [lichSuError, setLichSuError] = useState<string | null>(null);
 
   // Cascading: thu hẹp thietBi theo các lựa chọn cấp cao hơn đã chọn --
   // đúng thuật toán hệ cũ (App.applyFilters trong Javascript.html): lọc mảng
@@ -398,7 +406,7 @@ export function ChecksheetApp({
 
   // Việc C: mở modal "Sửa"/"Loại bỏ" cho đúng công việc vừa bấm nút trên
   // ChecksheetTable (xem nút "Thao tác" mới trong ChecksheetTable.tsx).
-  function handleOpenEditCongViec(mode: "edit" | "remove", row: CongViecRow) {
+  function handleOpenEditCongViec(mode: "edit" | "remove" | "restore", row: CongViecRow) {
     setEditTarget({
       mode,
       target: {
@@ -673,6 +681,23 @@ export function ChecksheetApp({
     document.title = prevTitle;
   }
 
+  // #3: nạp lịch sử thay đổi của thiết bị đang chọn rồi mở modal (fetch ở đây,
+  // không dùng effect trong modal).
+  async function handleOpenLichSu() {
+    if (!selectedThietBi) return;
+    setLichSuOpen(true);
+    setLichSuLoading(true);
+    setLichSuError(null);
+    try {
+      const data = await getThietBiLichSu(createClient(), selectedThietBi.id);
+      setLichSuRows(data);
+    } catch (e) {
+      setLichSuError(e instanceof Error ? e.message : "Không tải được lịch sử");
+    } finally {
+      setLichSuLoading(false);
+    }
+  }
+
   const canLoad = !!thietBiId && !!monthValue;
   const { thangDau, thangCuoi } = monthRange(monthValue);
   const showTable = loadedFor === `${thietBiId}_${monthValue}`;
@@ -791,6 +816,9 @@ export function ChecksheetApp({
                 : "Không có thay đổi nào chưa lưu."}
             </p>
             <div className="flex gap-2">
+              <button type="button" onClick={handleOpenLichSu} className={ui.buttonSecondary}>
+                Lịch sử thay đổi
+              </button>
               <button type="button" onClick={handlePrint} className={ui.buttonSecondary}>
                 In
               </button>
@@ -910,6 +938,7 @@ export function ChecksheetApp({
                 pendingCongViecIds={pendingCongViecIds}
                 onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
                 onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
+                onRestoreCongViec={(row) => handleOpenEditCongViec("restore", row)}
                 onSetPlan={handleSetPlan}
                 onSetAct={handleSetAct}
                 onRequestBatThuong={handleRequestBatThuong}
@@ -965,6 +994,7 @@ export function ChecksheetApp({
         open={!!editTarget}
         mode={editTarget?.mode ?? "edit"}
         target={editTarget?.target ?? null}
+        isAdmin={isAdminRole}
         onClose={() => setEditTarget(null)}
         onSuccess={handleEditCongViecSuccess}
       />
@@ -974,9 +1004,19 @@ export function ChecksheetApp({
           open={themOpen}
           thietBiId={selectedThietBi?.id ?? null}
           chiTietList={chiTietOptions(rows)}
+          isAdmin={isAdminRole}
           onClose={() => setThemOpen(false)}
         />
       ) : null}
+
+      <LichSuThietBiModal
+        open={lichSuOpen}
+        tenThietBi={selectedThietBi?.tenThietBi ?? ""}
+        rows={lichSuRows}
+        loading={lichSuLoading}
+        error={lichSuError}
+        onClose={() => setLichSuOpen(false)}
+      />
     </div>
   );
 }
