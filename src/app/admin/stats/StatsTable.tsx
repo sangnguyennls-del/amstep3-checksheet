@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { PlanStatsRow } from "@/lib/checksheet/planStats";
 import { ui } from "@/lib/ui";
+import { stripDiacritics } from "@/lib/filters";
+import { Pagination, paginate } from "@/components/Pagination";
 import { BatchPrint } from "./BatchPrint";
+
+const PAGE_SIZE = 20;
 
 const STATUS_LIST = ["Đã cập nhật", "Chưa cập nhật"] as const;
 
@@ -46,35 +50,43 @@ export function StatsTable({
     [initialRows],
   );
 
+  // Khớp nhân viên theo cả TÊN lẫn MSNV, không dấu (#2b).
+  const nhanVienQuery = stripDiacritics(nhanVien.trim());
+  function khopNhanVien(r: PlanStatsRow): boolean {
+    if (!nhanVienQuery) return true;
+    return stripDiacritics(`${r.nguoiPhuTrachTen ?? ""} ${r.nguoiPhuTrach ?? ""}`).includes(
+      nhanVienQuery,
+    );
+  }
+
   const filtered = useMemo(() => {
-    const nhanVienLower = nhanVien.trim().toLowerCase();
     return initialRows.filter((r) => {
       if (kip !== ALL && r.kip !== kip) return false;
       if (trangThai !== ALL && r.status !== trangThai) return false;
-      if (nhanVienLower && !(r.nguoiPhuTrach ?? "").toLowerCase().includes(nhanVienLower)) {
-        return false;
-      }
+      if (!khopNhanVien(r)) return false;
       return true;
     });
-  }, [initialRows, kip, nhanVien, trangThai]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRows, kip, nhanVienQuery, trangThai]);
 
   // Hàng đợi in hàng loạt (Task 3): dùng LẠI các bộ lọc Kíp/Nhân viên đang áp
   // dụng ở bảng, nhưng ÉP BUỘC status="Đã cập nhật" bất kể người dùng đang
   // chọn Trạng thái gì ở bảng hiển thị -- đúng hành vi hệ cũ (chỉ in thiết bị
   // đã cập nhật kế hoạch, xem CLAUDE.md/bối cảnh Task 3).
   const printableDevices = useMemo(() => {
-    const nhanVienLower = nhanVien.trim().toLowerCase();
     return initialRows
       .filter((r) => {
         if (r.status !== "Đã cập nhật") return false;
         if (kip !== ALL && r.kip !== kip) return false;
-        if (nhanVienLower && !(r.nguoiPhuTrach ?? "").toLowerCase().includes(nhanVienLower)) {
-          return false;
-        }
+        if (!khopNhanVien(r)) return false;
         return true;
       })
       .map((r) => ({ thietBiId: r.thietBiId, tenThietBi: r.tenThietBi }));
-  }, [initialRows, kip, nhanVien]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRows, kip, nhanVienQuery]);
+
+  const [page, setPage] = useState(1);
+  const { pageCount, safePage, pageItems } = paginate(filtered, page, PAGE_SIZE);
 
   return (
     <div>
@@ -106,12 +118,12 @@ export function StatsTable({
         </label>
 
         <label className="flex flex-col gap-1 text-sm text-gray-600">
-          Nhân viên (MSNV)
+          Nhân viên
           <input
             type="text"
             value={nhanVien}
             onChange={(e) => setNhanVien(e.target.value)}
-            placeholder="Nhập MSNV..."
+            placeholder="Nhập tên hoặc MSNV…"
             className={ui.input}
           />
         </label>
@@ -142,11 +154,13 @@ export function StatsTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row) => (
+            {pageItems.map((row) => (
               <tr key={row.thietBiId} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
                 <td className="px-3 py-2.5 whitespace-nowrap">{row.xuong ?? "—"}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap">{row.kip ?? "—"}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap">{row.nguoiPhuTrach ?? "—"}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap" title={row.nguoiPhuTrach ?? undefined}>
+                  {row.nguoiPhuTrachTen ?? row.nguoiPhuTrach ?? "—"}
+                </td>
                 <td className="px-3 py-2.5 font-medium whitespace-nowrap text-gray-900">{row.tenThietBi}</td>
                 <td className="px-3 py-2.5 tabular-nums whitespace-nowrap">
                   {row.plannedTasks}/{row.totalTasks}
@@ -169,6 +183,10 @@ export function StatsTable({
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="no-print">
+        <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onPage={setPage} />
       </div>
 
       <BatchPrint devices={printableDevices} monthValue={month} />

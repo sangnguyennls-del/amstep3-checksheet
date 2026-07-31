@@ -9,8 +9,16 @@ import {
   type EquipmentActionState,
 } from "@/app/actions/equipment";
 import { ui } from "@/lib/ui";
-import { defaultIfAvailable, formatThietBiLabel } from "@/lib/filters";
+import { defaultIfAvailable, formatThietBiLabel, stripDiacritics } from "@/lib/filters";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { Pagination, paginate } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
+
+// Sentinel cho lựa chọn "thiết bị chưa gán Nhóm nhỏ" (nhom null/rỗng) trong bộ
+// lọc -- SearchableSelect chỉ nhận value chuỗi nên dùng 1 giá trị không thể
+// trùng dữ liệu thật.
+const NHOM_CHUA_GAN = "__none__";
 
 export type ThietBiRow = {
   id: string;
@@ -186,6 +194,7 @@ export function EquipmentList({
   const [filterXuong, setFilterXuong] = useState(initialXuong);
   const [filterNhom, setFilterNhom] = useState(initialNhom);
   const [filterKhuVuc, setFilterKhuVuc] = useState("");
+  const [filterTen, setFilterTen] = useState("");
   // Chỉ mặc định về "chính mình" nếu msnv đó thực sự đứng tên phụ trách ít
   // nhất 1 thiết bị khớp Xưởng/Nhóm đã mặc định -- nếu không, mặc định về
   // msnv sẽ lọc rỗng toàn bộ danh sách (đa số Admin không đứng tên phụ trách
@@ -205,13 +214,19 @@ export function EquipmentList({
   const nhomOptions = uniqueSorted(items.map((i) => i.nhom));
   const khuVucOptions = uniqueSorted(items.map((i) => i.khu_vuc));
 
+  const tenQuery = stripDiacritics(filterTen.trim());
   const filteredItems = items.filter(
     (item) =>
       (!filterXuong || item.xuong === filterXuong) &&
-      (!filterNhom || item.nhom === filterNhom) &&
+      (filterNhom === NHOM_CHUA_GAN ? !item.nhom : !filterNhom || item.nhom === filterNhom) &&
       (!filterKhuVuc || item.khu_vuc === filterKhuVuc) &&
-      (!filterNguoiPhuTrach || item.nguoi_phu_trach === filterNguoiPhuTrach),
+      (!filterNguoiPhuTrach || item.nguoi_phu_trach === filterNguoiPhuTrach) &&
+      (!tenQuery ||
+        stripDiacritics(`${item.ma_thiet_bi} ${item.ten_thiet_bi}`).includes(tenQuery)),
   );
+
+  const [page, setPage] = useState(1);
+  const { pageCount, safePage, pageItems } = paginate(filteredItems, page, PAGE_SIZE);
 
   function handleDelete(item: ThietBiRow) {
     if (
@@ -238,7 +253,17 @@ export function EquipmentList({
 
       {/* Mục 11: bộ lọc gõ-tìm không dấu (SearchableSelect) thay <select>.
           Vòng 2: bỏ bộ lọc Kíp (trùng nghĩa với Nhóm nhỏ). */}
-      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 ${ui.card}`}>
+      <div className={`mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 ${ui.card}`}>
+        <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+          <label className={ui.label}>Tìm thiết bị</label>
+          <input
+            type="text"
+            value={filterTen}
+            onChange={(e) => setFilterTen(e.target.value)}
+            placeholder="Nhập tên hoặc mã…"
+            className={ui.input}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <label className={ui.label}>Xưởng</label>
           <SearchableSelect
@@ -252,7 +277,10 @@ export function EquipmentList({
           <SearchableSelect
             value={filterNhom}
             onChange={setFilterNhom}
-            options={nhomOptions.map((n) => ({ value: n, label: n }))}
+            options={[
+              { value: NHOM_CHUA_GAN, label: "— Chưa có nhóm —" },
+              ...nhomOptions.map((n) => ({ value: n, label: n })),
+            ]}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -286,7 +314,7 @@ export function EquipmentList({
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item) => (
+            {pageItems.map((item) => (
               <tr key={item.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
                 <td className="px-4 py-2.5 font-medium text-gray-900">{item.ma_thiet_bi}</td>
                 <td className="px-4 py-2.5">{item.ten_thiet_bi}</td>
@@ -322,6 +350,8 @@ export function EquipmentList({
           </tbody>
         </table>
       </div>
+
+      <Pagination page={safePage} pageCount={pageCount} total={filteredItems.length} onPage={setPage} />
     </div>
   );
 }

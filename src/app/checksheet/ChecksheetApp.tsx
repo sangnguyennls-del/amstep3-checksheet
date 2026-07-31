@@ -25,7 +25,12 @@ import { EditCongViecModal, type EditCongViecResult, type EditCongViecTarget } f
 import { EquipmentImageModal, toDriveImageSrc } from "./EquipmentImageModal";
 import { ThemHangMucModal } from "./ThemHangMucModal";
 import { LichSuThietBiModal } from "./LichSuThietBiModal";
-import { getThietBiLichSu, type LichSuRow } from "@/lib/checksheet/thietBiLichSu";
+import {
+  getThietBiCauHinh,
+  getThietBiChamCong,
+  type CauHinhRow,
+  type ChamCongRow,
+} from "@/lib/checksheet/thietBiLichSu";
 import { chiTietOptions } from "@/lib/checksheet/chiTietOptions";
 import checksheetStyles from "./checksheet.module.css";
 import "./print.css";
@@ -212,7 +217,8 @@ export function ChecksheetApp({
   // #3: modal "Lịch sử thay đổi thiết bị" -- nạp dữ liệu lúc bấm (trong onClick,
   // KHÔNG dùng useEffect) để tránh lint set-state-in-effect; modal chỉ hiển thị.
   const [lichSuOpen, setLichSuOpen] = useState(false);
-  const [lichSuRows, setLichSuRows] = useState<LichSuRow[]>([]);
+  const [cauHinhRows, setCauHinhRows] = useState<CauHinhRow[]>([]);
+  const [chamCongRows, setChamCongRows] = useState<ChamCongRow[]>([]);
   const [lichSuLoading, setLichSuLoading] = useState(false);
   const [lichSuError, setLichSuError] = useState<string | null>(null);
 
@@ -689,8 +695,13 @@ export function ChecksheetApp({
     setLichSuLoading(true);
     setLichSuError(null);
     try {
-      const data = await getThietBiLichSu(createClient(), selectedThietBi.id);
-      setLichSuRows(data);
+      const supabase = createClient();
+      const [cauHinh, chamCong] = await Promise.all([
+        getThietBiCauHinh(supabase, selectedThietBi.id),
+        getThietBiChamCong(supabase, selectedThietBi.id),
+      ]);
+      setCauHinhRows(cauHinh);
+      setChamCongRows(chamCong);
     } catch (e) {
       setLichSuError(e instanceof Error ? e.message : "Không tải được lịch sử");
     } finally {
@@ -1012,7 +1023,8 @@ export function ChecksheetApp({
       <LichSuThietBiModal
         open={lichSuOpen}
         tenThietBi={selectedThietBi?.tenThietBi ?? ""}
-        rows={lichSuRows}
+        cauHinhRows={cauHinhRows}
+        chamCongRows={chamCongRows}
         loading={lichSuLoading}
         error={lichSuError}
         onClose={() => setLichSuOpen(false)}

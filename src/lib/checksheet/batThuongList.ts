@@ -20,6 +20,7 @@ export type BatThuongListItem = {
   ngayKhacPhuc: string | null;
   trangThai: "Mở" | "Đang xử lý" | "Đã đóng";
   nguoiGhi: string | null;
+  nguoiGhiTen: string | null; // họ tên (join nguoidung theo nguoi_ghi)
   ngay: string; // ngày của thuc_hien liên quan ("YYYY-MM-DD")
   loaiHoatDong: string;
   tenChiTiet: string;
@@ -42,6 +43,8 @@ type BatThuongJoinRow = {
   nguoi_ghi: string | null;
   updated_at: string;
   thuc_hien: ThucHienJoin | ThucHienJoin[] | null;
+  // Họ tên người ghi (1 FK duy nhất bat_thuong.nguoi_ghi -> nguoidung.msnv).
+  nguoi_ghi_nd: { ho_ten: string } | { ho_ten: string }[] | null;
 };
 
 /**
@@ -58,6 +61,7 @@ export async function getBatThuongList(
     .from("bat_thuong")
     .select(
       `id, mo_ta, anh_url, ngay_phat_hien, ngay_khac_phuc, trang_thai, nguoi_ghi, updated_at,
+       nguoi_ghi_nd:nguoidung!nguoi_ghi ( ho_ten ),
        thuc_hien!inner ( ngay,
          congviec!inner ( loai_hoat_dong,
            chitiet!inner ( ten_chi_tiet,
@@ -88,6 +92,7 @@ export async function getBatThuongList(
       ngayKhacPhuc: r.ngay_khac_phuc ?? null,
       trangThai: r.trang_thai,
       nguoiGhi: r.nguoi_ghi ?? null,
+      nguoiGhiTen: firstOrNull(r.nguoi_ghi_nd)?.ho_ten ?? null,
       ngay: thucHien?.ngay ?? "",
       loaiHoatDong: congViec?.loai_hoat_dong ?? "",
       tenChiTiet: chiTiet?.ten_chi_tiet ?? "",

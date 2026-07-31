@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import type { BatThuongListItem } from "@/lib/checksheet/batThuongList";
 import { updateBatThuongStatus, type UpdateBatThuongState } from "@/app/actions/batThuong";
 import { ui } from "@/lib/ui";
+import { Pagination, paginate } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 // Định nghĩa state ban đầu Ở ĐÂY (client), KHÔNG import từ file "use server"
 // -- Next.js 16 chỉ cho phép 1 file "use server" export các hàm async,
@@ -120,6 +123,9 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
     [initialItems, selected],
   );
 
+  const [page, setPage] = useState(1);
+  const { pageCount, safePage, pageItems } = paginate(filtered, page, PAGE_SIZE);
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -159,7 +165,7 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
+            {pageItems.map((item) => (
               <tr key={item.id} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/60">
                 <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(item.ngay)}</td>
                 <td className="px-3 py-2.5 font-medium whitespace-nowrap text-gray-900">
@@ -177,7 +183,9 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
                     {item.trangThai}
                   </span>
                 </td>
-                <td className="px-3 py-2.5 whitespace-nowrap">{item.nguoiGhi ?? "—"}</td>
+                <td className="px-3 py-2.5 whitespace-nowrap" title={item.nguoiGhi ?? undefined}>
+                  {item.nguoiGhiTen ?? item.nguoiGhi ?? "—"}
+                </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
                   {item.anhUrl ? (
                     <a
@@ -207,6 +215,8 @@ export function BatThuongList({ initialItems }: { initialItems: BatThuongListIte
           </tbody>
         </table>
       </div>
+
+      <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onPage={setPage} />
     </div>
   );
 }

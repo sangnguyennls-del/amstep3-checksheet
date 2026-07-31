@@ -10,6 +10,7 @@ export type PlanStatsRow = {
   xuong: string | null;
   kip: string | null;
   nguoiPhuTrach: string | null;
+  nguoiPhuTrachTen: string | null; // họ tên (RPC get_plan_stats join nguoidung)
   tenThietBi: string;
   totalTasks: number;
   plannedTasks: number;
@@ -21,6 +22,7 @@ type PlanStatsRpcRow = {
   xuong: string | null;
   kip: string | null;
   nguoi_phu_trach: string | null;
+  ho_ten: string | null;
   ten_thiet_bi: string;
   total_tasks: number;
   planned_tasks: number;
@@ -47,6 +49,7 @@ export async function getPlanStats(
     xuong: r.xuong ?? null,
     kip: r.kip ?? null,
     nguoiPhuTrach: r.nguoi_phu_trach ?? null,
+    nguoiPhuTrachTen: r.ho_ten ?? null,
     tenThietBi: r.ten_thiet_bi,
     totalTasks: Number(r.total_tasks),
     plannedTasks: Number(r.planned_tasks),

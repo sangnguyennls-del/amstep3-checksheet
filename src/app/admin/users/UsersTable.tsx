@@ -10,6 +10,9 @@ import {
 } from "@/app/actions/users";
 import { ui } from "@/lib/ui";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { Pagination, paginate } from "@/components/Pagination";
+
+const PAGE_SIZE = 20;
 
 export type UserRow = {
   id: string;
@@ -238,6 +241,9 @@ export function UsersTable({
       (!filterVaiTro || (u.vai_tro ?? "user") === filterVaiTro),
   );
 
+  const [page, setPage] = useState(1);
+  const { pageCount, safePage, pageItems } = paginate(filteredUsers, page, PAGE_SIZE);
+
   function handleDelete(user: UserRow) {
     if (!confirm(`Xoá người dùng ${user.msnv} - ${user.ho_ten}? Hành động này không thể hoàn tác.`)) {
       return;
@@ -300,7 +306,7 @@ export function UsersTable({
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((u) => (
+            {pageItems.map((u) => (
               <tr key={u.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
                 <td className="px-4 py-2.5 font-medium text-gray-900">{u.msnv}</td>
                 <td className="px-4 py-2.5">{u.ho_ten}</td>
@@ -357,6 +363,8 @@ export function UsersTable({
           </tbody>
         </table>
       </div>
+
+      <Pagination page={safePage} pageCount={pageCount} total={filteredUsers.length} onPage={setPage} />
 
       {editingUser ? (
         <EditUserDialog
