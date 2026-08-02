@@ -130,6 +130,43 @@ const PRINT_COL_WIDTHS = {
   ngay: 24,
 } as const;
 
+// Đợt 6 (item 1b): badge "Chờ duyệt" + nút "Hủy" (chỉ khi đề xuất do chính
+// người xem gửi -> có trong cancelMap). Dùng ở cả 2 chỗ (dòng thường + dòng
+// loại-bỏ-từ-tháng-sau) nên tách thành component nhỏ.
+function PendingBadge({
+  congViecId,
+  cancelMap,
+  onHuy,
+}: {
+  congViecId: string;
+  cancelMap: Map<string, string>;
+  onHuy: (deXuatId: string) => void;
+}) {
+  const deXuatId = cancelMap.get(congViecId);
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"
+        title="Đề xuất đang chờ Admin duyệt"
+      >
+        Chờ duyệt
+      </span>
+      {deXuatId ? (
+        <button
+          type="button"
+          className="rounded border border-[#dc3545] px-1.5 text-[10px] leading-4 text-[#dc3545] hover:bg-[#dc3545] hover:text-white"
+          title="Hủy đề xuất bạn vừa gửi (đang chờ duyệt)"
+          onClick={() => {
+            if (confirm("Hủy đề xuất đang chờ duyệt này?")) onHuy(deXuatId);
+          }}
+        >
+          Hủy
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function ChecksheetTable({
   rows,
   thucHien,
@@ -139,6 +176,8 @@ export function ChecksheetTable({
   todayIso,
   canManageCongViec,
   pendingCongViecIds,
+  pendingCancelByDisplayId,
+  onHuyDeXuat,
   onEditCongViec,
   onRemoveCongViec,
   onRestoreCongViec,
@@ -167,6 +206,10 @@ export function ChecksheetTable({
   /** Việc 2: congViecId đang có đề xuất "Chờ duyệt" -- ẩn nút Sửa/Xoá + hiện
    * badge cho dòng đó, tránh tạo đề xuất trùng trong lúc chờ Admin duyệt. */
   pendingCongViecIds: Set<string>;
+  /** Đợt 6 (item 1b): displayCongViecId -> de_xuat id, CHỈ với đề xuất do chính
+   * người xem gửi -> hiện nút "Hủy" cạnh badge "Chờ duyệt". */
+  pendingCancelByDisplayId: Map<string, string>;
+  onHuyDeXuat: (deXuatId: string) => void;
   onEditCongViec: (row: CongViecRow) => void;
   onRemoveCongViec: (row: CongViecRow) => void;
   /** #2: khôi phục 1 công việc "Loại bỏ từ tháng sau" (còn hiển thị tháng này)
@@ -395,12 +438,11 @@ export function ChecksheetTable({
                   {isEndingThisMonth ? (
                     pendingCongViecIds.has(row.congViecId) ? (
                       // Đã có đề xuất (vd khôi phục) đang chờ duyệt trên chính dòng này.
-                      <span
-                        className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"
-                        title="Đề xuất đang chờ Admin duyệt"
-                      >
-                        Chờ duyệt
-                      </span>
+                      <PendingBadge
+                        congViecId={row.congViecId}
+                        cancelMap={pendingCancelByDisplayId}
+                        onHuy={onHuyDeXuat}
+                      />
                     ) : (
                       <div className="flex flex-col items-center gap-1">
                         <span
@@ -428,12 +470,11 @@ export function ChecksheetTable({
                       </div>
                     )
                   ) : pendingCongViecIds.has(row.congViecId) ? (
-                    <span
-                      className="rounded-full bg-[#fff3cd] px-1.5 py-0.5 text-[10px] font-medium text-[#664d03]"
-                      title="Đề xuất đang chờ Admin duyệt"
-                    >
-                      Chờ duyệt
-                    </span>
+                    <PendingBadge
+                      congViecId={row.congViecId}
+                      cancelMap={pendingCancelByDisplayId}
+                      onHuy={onHuyDeXuat}
+                    />
                   ) : canManageCongViec ? (
                     <div className="flex justify-center gap-1">
                       <button

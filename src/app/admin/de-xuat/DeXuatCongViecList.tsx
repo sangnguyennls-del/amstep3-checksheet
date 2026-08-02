@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DeXuatCongViecItem } from "@/lib/checksheet/deXuatCongViecList";
-import { resolveDeXuatCongViec, type ResolveDeXuatState } from "@/app/actions/deXuatCongViec";
+import { hoanTacDuyet, resolveDeXuatCongViec, type ResolveDeXuatState } from "@/app/actions/deXuatCongViec";
 import { formatThietBiLabel } from "@/lib/filters";
 import { ui } from "@/lib/ui";
 
@@ -75,6 +75,44 @@ function ChangeSummary({ item }: { item: DeXuatCongViecItem }) {
   );
 }
 
+// Đợt 6 (item 2): nút Hoàn tác trên dòng ĐÃ DUYỆT -- rollback đề xuất về như
+// chưa duyệt (RPC hoan_tac_duyet + guard chống mất dữ liệu mới ở server).
+function HoanTacButton({ item }: { item: DeXuatCongViecItem }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function onClick() {
+    if (
+      !confirm(
+        `Hoàn tác đề xuất "${LOAI_DE_XUAT_LABEL[item.loaiDeXuat]}" đã duyệt này?\n\nThay đổi sẽ được ĐẢO NGƯỢC về như chưa duyệt (chấm công đã chấm được bảo toàn/khôi phục). Nếu sau khi duyệt đã có thay đổi hoặc chấm công mới trên hạng mục thì không thể tự hoàn tác.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await hoanTacDuyet(item.id);
+      if (res.error) setError(res.error);
+      else router.refresh();
+    });
+  }
+
+  return (
+    <div className="mt-0.5 flex flex-col gap-0.5">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isPending}
+        className="self-start rounded-md border border-red-300 px-2 py-0.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isPending ? "Đang hoàn tác..." : "↩ Hoàn tác"}
+      </button>
+      {error ? <span className="text-red-600">{error}</span> : null}
+    </div>
+  );
+}
+
 // 1 form độc lập mỗi dòng -- cùng pattern BatThuongList.tsx/UsersTable.tsx.
 function RowResolveForm({ item }: { item: DeXuatCongViecItem }) {
   const router = useRouter();
@@ -90,9 +128,10 @@ function RowResolveForm({ item }: { item: DeXuatCongViecItem }) {
 
   if (item.trangThai !== "Chờ duyệt") {
     return (
-      <div className="text-xs text-gray-500">
+      <div className="flex flex-col gap-1 text-xs text-gray-500">
         <span title={item.nguoiDuyet ?? undefined}>{item.nguoiDuyetTen ?? item.nguoiDuyet ?? "—"}</span>
-        {item.trangThai === "Từ chối" && item.lyDoTuChoi ? ` — ${item.lyDoTuChoi}` : null}
+        {item.trangThai === "Từ chối" && item.lyDoTuChoi ? <span>— {item.lyDoTuChoi}</span> : null}
+        {item.trangThai === "Đã duyệt" ? <HoanTacButton item={item} /> : null}
       </div>
     );
   }

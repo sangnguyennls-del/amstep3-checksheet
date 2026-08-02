@@ -181,6 +181,12 @@ export function ChecksheetApp({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Đợt 6 (item 1a): snapshot giá trị TRƯỚC khi lưu của các ô vừa lưu -> cho
+  // phép "Hoàn tác lần lưu vừa rồi" (chỉ trong phiên, chỉ lần gần nhất). Bị xóa
+  // khi người dùng bắt đầu chỉnh sửa tiếp hoặc tải lại lưới.
+  const [lastUndo, setLastUndo] = useState<
+    { congViecId: string; ngay: string; keHoach: boolean; ketQua: KetQua }[]
+  >([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [rejectedCells, setRejectedCells] = useState<RejectedCell[]>([]);
   // Chế độ tô cho vùng Thực tế (thanh PaintModeBar) -- thay chu trình bấm vòng
@@ -212,6 +218,12 @@ export function ChecksheetApp({
   // hiện badge cho dòng đó (tránh đề xuất trùng), tải lại mỗi khi load
   // checksheet hoặc ngay sau khi 1 đề xuất mới được tạo.
   const [pendingCongViecIds, setPendingCongViecIds] = useState<Set<string>>(new Set());
+  // Đợt 6 (item 1b): map displayCongViecId -> de_xuat id CHỈ với đề xuất do
+  // CHÍNH người đang đăng nhập gửi (để hiện nút "Hủy" đúng chỗ; RPC huy_de_xuat
+  // vẫn tự chặn người khác).
+  const [pendingCancelByDisplayId, setPendingCancelByDisplayId] = useState<Map<string, string>>(
+    new Map(),
+  );
   // Task C: modal "Đề xuất thêm hạng mục" mở từ nút trên checksheet.
   const [themOpen, setThemOpen] = useState(false);
   // #3: modal "Lịch sử thay đổi thiết bị" -- nạp dữ liệu lúc bấm (trong onClick,
@@ -298,6 +310,7 @@ export function ChecksheetApp({
   async function refreshPendingCongViec(congViecRows: CongViecRow[]) {
     if (congViecRows.length === 0) {
       setPendingCongViecIds(new Set());
+      setPendingCancelByDisplayId(new Map());
       return;
     }
     // map: id (hiển thị hoặc kế nhiệm) -> id đang hiển thị trên lưới
@@ -309,16 +322,34 @@ export function ChecksheetApp({
     const supabase = createClient();
     const { data } = await supabase
       .from("de_xuat_congviec")
-      .select("congviec_id")
+      .select("id, congviec_id, nguoi_de_xuat")
       .eq("trang_thai", "Chờ duyệt")
       .in("congviec_id", Array.from(displayIdByQueryId.keys()));
-    setPendingCongViecIds(
-      new Set(
-        (data ?? [])
-          .map((r) => displayIdByQueryId.get(r.congviec_id as string))
-          .filter((v): v is string => !!v),
-      ),
-    );
+    const ids = new Set<string>();
+    const cancel = new Map<string, string>();
+    for (const r of data ?? []) {
+      const displayId = displayIdByQueryId.get(r.congviec_id as string);
+      if (!displayId) continue;
+      ids.add(displayId);
+      // Chỉ cho hủy đề xuất do chính mình gửi.
+      if (currentUser.msnv && r.nguoi_de_xuat === currentUser.msnv) {
+        cancel.set(displayId, r.id as string);
+      }
+    }
+    setPendingCongViecIds(ids);
+    setPendingCancelByDisplayId(cancel);
+  }
+
+  // Đợt 6 (item 1b): người gửi tự hủy đề xuất đang chờ (gọi RPC trực tiếp như
+  // các thao tác checksheet khác), rồi nạp lại pending.
+  async function handleHuyDeXuat(deXuatId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.rpc("huy_de_xuat", { p_de_xuat_id: deXuatId });
+    if (error) {
+      setSaveError(error.message);
+      return;
+    }
+    await refreshPendingCongViec(rows);
   }
 
   async function handleLoad() {
@@ -366,11 +397,37 @@ export function ChecksheetApp({
   }
 
   function handleSetPlan(congViecId: string, ngay: string, keHoach: boolean) {
+    setLastUndo([]); // chỉnh sửa mới -> snapshot hoàn tác cũ không còn hợp lệ
     dispatch({ type: "setPlan", congViecId, ngay, keHoach });
   }
 
   function handleSetAct(congViecId: string, ngay: string, ketQua: KetQua) {
+    setLastUndo([]);
     dispatch({ type: "setAct", congViecId, ngay, ketQua });
+  }
+
+  // Đợt 6 (item 1a): hoàn tác lần lưu vừa rồi -> ghi lại các ô về giá trị TRƯỚC
+  // khi lưu (RPC upsert_thuc_hien), rồi tải lại lưới từ DB (đã revert).
+  async function handleUndoLastSave() {
+    if (lastUndo.length === 0 || saving) return;
+    const undo = lastUndo;
+    setLastUndo([]);
+    setSaveError(null);
+    const supabase = createClient();
+    const payload = undo.map((u) => ({
+      congviec_id: u.congViecId,
+      ngay: u.ngay,
+      ke_hoach: u.keHoach,
+      ket_qua: u.ketQua,
+      expected_updated_at: null,
+    }));
+    const { error } = await supabase.rpc("upsert_thuc_hien", { payload });
+    if (error) {
+      setSaveError(`Không hoàn tác được: ${error.message}`);
+      return;
+    }
+    await handleLoad();
+    window.dispatchEvent(new Event(CHECKSHEET_SAVED_EVENT));
   }
 
   function handleSelectDay(congViecId: string, ngay: string) {
@@ -655,6 +712,21 @@ export function ChecksheetApp({
         const refreshed = await getThucHien(supabase, appliedCongViecIds, thangDau, thangCuoi);
         const firstKey = cellKey(appliedEntries[0].congViecId, appliedEntries[0].ngay);
         const savedAt = refreshed[firstKey]?.updatedAt ?? new Date().toISOString();
+        // Item 1a: chụp giá trị TRƯỚC khi lưu (gridState.initial vẫn là giá trị
+        // cũ ở closure này, trước khi markFieldsApplied đồng bộ initial). Bỏ ô
+        // có giá trị cũ = 'R' (không lưu lại được qua nút Lưu thường).
+        const undoSnapshot = appliedEntries
+          .map((e) => {
+            const before = gridState.initial[cellKey(e.congViecId, e.ngay)];
+            return {
+              congViecId: e.congViecId,
+              ngay: e.ngay,
+              keHoach: before?.keHoach ?? false,
+              ketQua: (before?.ketQua ?? "N") as KetQua,
+            };
+          })
+          .filter((u) => u.ketQua !== "R");
+        setLastUndo(undoSnapshot);
         dispatch({ type: "markFieldsApplied", entries: appliedEntries, savedAt });
         // Có field được áp dụng thật -- báo cho NotificationBell tải lại (có
         // thể vừa xoá 1 mục "thiếu Plan/Actual" khỏi chuông). KHÔNG dispatch
@@ -833,6 +905,19 @@ export function ChecksheetApp({
               <button type="button" onClick={handlePrint} className={ui.buttonSecondary}>
                 In
               </button>
+              {/* Item 1a: hoàn tác lần lưu vừa rồi (chỉ hiện khi vừa lưu xong,
+                  chưa chỉnh sửa gì thêm). */}
+              {lastUndo.length > 0 && !hasDirty ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleUndoLastSave}
+                  title="Ghi lại các ô vừa lưu về giá trị trước đó"
+                  className="inline-flex items-center justify-center rounded-md border border-amber-400 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↩ Hoàn tác lần lưu
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={!hasDirty || saving}
@@ -947,6 +1032,8 @@ export function ChecksheetApp({
                 todayIso={todayIso}
                 canManageCongViec={canManageDevice}
                 pendingCongViecIds={pendingCongViecIds}
+                pendingCancelByDisplayId={pendingCancelByDisplayId}
+                onHuyDeXuat={handleHuyDeXuat}
                 onEditCongViec={(row) => handleOpenEditCongViec("edit", row)}
                 onRemoveCongViec={(row) => handleOpenEditCongViec("remove", row)}
                 onRestoreCongViec={(row) => handleOpenEditCongViec("restore", row)}

@@ -54,3 +54,21 @@ export async function resolveDeXuatCongViec(
   revalidatePath("/admin/de-xuat");
   return { error: null, success: true };
 }
+
+// Đợt 6 (item 2): Trưởng ca HOÀN TÁC 1 đề xuất ĐÃ DUYỆT (rollback về như chưa
+// duyệt). RPC `hoan_tac_duyet` (migration 0024) tự kiểm tra quyền duyệt + guard
+// chống mất dữ liệu mới, action chỉ chuyển tiếp lỗi.
+export async function hoanTacDuyet(deXuatId: string): Promise<{ error: string | null }> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Không có quyền truy cập" };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("hoan_tac_duyet", { p_de_xuat_id: deXuatId });
+  if (error) {
+    return { error: error.message };
+  }
+  revalidatePath("/admin/de-xuat");
+  return { error: null };
+}

@@ -17,6 +17,7 @@ import { toDriveImageSrc } from "./EquipmentImageModal";
 import checksheetStyles from "./checksheet.module.css";
 
 const EMPTY_PENDING = new Set<string>();
+const EMPTY_CANCEL = new Map<string, string>();
 const noop = () => {};
 
 export type PrintThietBi = FilterOptions["thietBi"][number];
@@ -130,6 +131,8 @@ export function PrintSheet({
             todayIso={todayIso}
             canManageCongViec={false}
             pendingCongViecIds={EMPTY_PENDING}
+            pendingCancelByDisplayId={EMPTY_CANCEL}
+            onHuyDeXuat={noop}
             onEditCongViec={noop}
             onRemoveCongViec={noop}
             onRestoreCongViec={noop}
