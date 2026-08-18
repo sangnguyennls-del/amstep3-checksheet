@@ -1,16 +1,16 @@
-// Cho phép app chạy CẢ khi mở trực tiếp LẪN khi nhúng iframe (Google Sites).
+// Cho phép app hiện trong IFRAME khác site (Google Sites nhúng app Vercel).
 //
 // Cookie phiên mặc định của @supabase/ssr là SameSite=Lax -> trong iframe khác
 // site trình duyệt không gửi/không cho JS đọc -> lưới checksheet (nạp phía
-// client) trả rỗng. SameSite=None + Secure cho phép gửi cookie trong iframe.
+// client) trả rỗng. Trình duyệt của user (đã xác nhận qua thực tế) CHẶN cookie
+// bên-thứ-ba, nên None+Secure KHÔNG đủ -> phải thêm Partitioned (CHIPS): cookie
+// được phân vùng theo site cha và vẫn hoạt động dưới chế độ chặn 3P cookie.
 //
-// KHÔNG dùng Partitioned (CHIPS): Partitioned chia cookie theo TỪNG site cha,
-// nên đăng nhập trong iframe (site cha = google sites) thì link trực tiếp
-// (site cha = vercel) lại là ngăn khác -> mất phiên. Bỏ Partitioned = 1 cookie
-// dùng chung -> cả hai cùng thấy. Đánh đổi: iframe phụ thuộc trình duyệt CHO
-// PHÉP cookie bên-thứ-ba (Safari/iOS hoặc Chrome chặn 3P cookie thì iframe vẫn
-// có thể trống); khi đó dùng link trực tiếp. In PDF: luôn dùng link trực tiếp
-// (iframe không gọi được window.print()).
+// HỆ QUẢ (chấp nhận theo yêu cầu "ưu tiên iframe hiện được"): Partitioned chia
+// cookie theo TỪNG site cha -> iframe (cha = google sites) và LINK TRỰC TIẾP
+// (cha = vercel) là 2 PHIÊN RIÊNG. Phải đăng nhập MỖI BÊN MỘT LẦN. Iframe để
+// xem/chấm hằng ngày; khi cần IN PDF thì mở link trực tiếp (iframe không gọi
+// được window.print()) và đăng nhập ở đó (1 lần, phiên first-party giữ lại).
 //
 // CHỈ áp ở production (https): SameSite=None bắt buộc Secure, mà Secure không đi
 // qua http thường -> dev (http://localhost) giữ mặc định Lax để không gãy login.
@@ -21,5 +21,5 @@
 // này thì đổi sang biến môi trường.
 export const crossSiteCookieOptions =
   process.env.NODE_ENV === "production"
-    ? { sameSite: "none" as const, secure: true }
+    ? { sameSite: "none" as const, secure: true, partitioned: true }
     : {};
