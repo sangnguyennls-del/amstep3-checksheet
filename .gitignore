@@ -57,3 +57,11 @@ scripts/migrate/tmp/
 # Pha 8 audit export/purge: file export .ndjson.gz có thể chứa dữ liệu thật
 # (tên/MSNV người dùng) — không commit vào git.
 scripts/audit/tmp/
+
+# Dữ liệu prod xuất ra (KHÔNG commit)
+data-export/
+
+# Google service account key JSON (SECRET — không bao giờ commit; giá trị nằm ở .env.local)
+*-service-account*.json
+gcp-*.json
+am-step-3-project-*.json
