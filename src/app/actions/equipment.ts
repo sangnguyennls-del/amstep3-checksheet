@@ -153,7 +153,15 @@ export async function assignNguoiPhuTrach(
 
 export async function deleteThietBi(id: string): Promise<{ error: string | null }> {
   try {
-    await requireAdmin();
+    // Chỉ AdminM: xoá thiết bị cascade mất toàn bộ chi tiết/công việc/chấm công.
+    // Lằn ranh #9 + RLS thietbi_delete (0025) là tầng chặn chính; đây là tầng 1.
+    const ctx = await requireAdmin();
+    if (ctx.vaiTro !== "adminm") {
+      return {
+        error:
+          "Chỉ AdminM mới được xoá thiết bị (xoá sẽ mất toàn bộ chi tiết, công việc và lịch sử chấm công của thiết bị).",
+      };
+    }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Không có quyền truy cập" };
   }

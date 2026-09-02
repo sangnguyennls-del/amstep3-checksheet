@@ -12,7 +12,7 @@ export default async function AdminEquipmentPage() {
     .order("ma_thiet_bi");
   const { data: users } = await supabase.from("nguoidung").select("msnv, ho_ten").order("ho_ten");
   const { data: profile } = user
-    ? await supabase.from("nguoidung").select("msnv, xuong, kip, nhom").eq("id", user.id).maybeSingle()
+    ? await supabase.from("nguoidung").select("msnv, xuong, kip, nhom, vai_tro").eq("id", user.id).maybeSingle()
     : { data: null };
 
   return (
@@ -26,6 +26,7 @@ export default async function AdminEquipmentPage() {
           xuong: profile?.xuong ?? null,
           kip: profile?.kip ?? null,
           nhom: profile?.nhom ?? null,
+          vaiTro: (profile?.vai_tro as "admin" | "adminm") ?? "admin",
         }}
       />
     </div>

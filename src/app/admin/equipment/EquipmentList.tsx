@@ -36,6 +36,7 @@ export type CurrentUserProfile = {
   xuong: string | null;
   kip: string | null;
   nhom: string | null;
+  vaiTro: "admin" | "adminm";
 };
 
 export type NguoiDungOption = { msnv: string; ho_ten: string };
@@ -328,14 +329,17 @@ export function EquipmentList({
                     <Link href={`/admin/equipment/${item.id}`} className={`${ui.buttonSecondary} px-2! py-1! text-xs!`}>
                       Chi tiết
                     </Link>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleDelete(item)}
-                      className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Xoá
-                    </button>
+                    {/* Chỉ AdminM thấy nút Xoá (RLS thietbi_delete chặn tầng DB). */}
+                    {currentUser.vaiTro === "adminm" ? (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleDelete(item)}
+                        className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Xoá
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>
