@@ -138,10 +138,25 @@ export async function assignNguoiPhuTrach(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("thietbi")
-    .update({ nguoi_phu_trach: msnv || null })
-    .eq("id", thietBiId);
+
+  // Đồng bộ nhom/kip theo NHÓM của người phụ trách mới (giống CSTB sync +
+  // create/updateThietBi). Trước đây chỉ đổi mỗi nguoi_phu_trach -> thiết bị
+  // kẹt ở nhóm của người CŨ; người mới lọc mặc định theo nhóm của mình nên
+  // KHÔNG thấy thiết bị vừa nhận (đúng lỗi "chuyển người xong thiết bị biến
+  // mất"). Giữ invariant kip = "Kíp " + nhom. Khi bỏ gán (msnv rỗng) thì chỉ
+  // gỡ người, không đụng nhom/kip (thiết bị vẫn thuộc nhóm cũ để còn lọc).
+  let update: Record<string, string | null> = { nguoi_phu_trach: null };
+  if (msnv) {
+    const { data: nd } = await supabase
+      .from("nguoidung")
+      .select("nhom")
+      .eq("msnv", msnv)
+      .maybeSingle();
+    const nhom = nd?.nhom ?? null;
+    update = { nguoi_phu_trach: msnv, nhom, kip: kipFromNhom(nhom) };
+  }
+
+  const { error } = await supabase.from("thietbi").update(update).eq("id", thietBiId);
 
   if (error) {
     return { error: friendlyFkError(error.message) };
